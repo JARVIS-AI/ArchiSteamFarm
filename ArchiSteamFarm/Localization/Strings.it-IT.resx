@@ -157,9 +157,6 @@
     <value>{0} non è valido!</value>
     <comment>{0} will be replaced by object's name</comment>
   </data>
-  <data name="ErrorMobileAuthenticatorInvalidDeviceID" xml:space="preserve">
-    <value>Rifiutando di eseguire questa funzione a causa di un DeviceID invalido in ASF 2FA!</value>
-  </data>
   <data name="ErrorNoBotsDefined" xml:space="preserve">
     <value>Nessun bot è definito. Hai dimenticato di configurare il tuo ASF?</value>
   </data>
@@ -246,10 +243,6 @@
     <value>Versione locale: {0} | Versione remota: {1}</value>
     <comment>{0} will be replaced by current version, {1} will be replaced by remote version</comment>
   </data>
-  <data name="UserInputDeviceID" xml:space="preserve">
-    <value>Inserisci il tuo ID dispositivo (device ID) dell'autenticatore mobile (incluso "android:"): </value>
-    <comment>Please note that this translation should end with space</comment>
-  </data>
   <data name="UserInputSteam2FA" xml:space="preserve">
     <value>Inserisci il codice 2FA dell'autenticatore mobile di Steam: </value>
     <comment>Please note that this translation should end with space</comment>
@@ -269,10 +262,6 @@
   <data name="UserInputSteamPassword" xml:space="preserve">
     <value>Inserisci la tua password di Steam: </value>
     <comment>Please note that this translation should end with space</comment>
-  </data>
-  <data name="UserInputUnknown" xml:space="preserve">
-    <value>Inserisci il valore non documentato {0}: </value>
-    <comment>{0} will be replaced by property name. Please note that this translation should end with space</comment>
   </data>
   <data name="WarningUnknownValuePleaseReport" xml:space="preserve">
     <value>Ricevuto valore sconosciuto per {0}, si prega di segnalare: {1}</value>
@@ -404,9 +393,6 @@
   </data>
   <data name="BotAuthenticatorImportFinished" xml:space="preserve">
     <value>L'importazione dell'autenticatore mobile terminata con successo!</value>
-  </data>
-  <data name="BotAuthenticatorInvalidDeviceID" xml:space="preserve">
-    <value>Il tuo DeviceID non è corretto o non esiste!</value>
   </data>
   <data name="BotAuthenticatorToken" xml:space="preserve">
     <value>Token 2FA: {0}</value>
@@ -613,10 +599,7 @@
   <data name="WarningPreReleaseVersion" xml:space="preserve">
     <value>Stai utilizzando una versione più recente dell'ultima versione rilasciata per il tuo canale di aggiornamento. Sei pregato di notare che le versioni pre-release sono dedicate agli utenti che sono capaci di segnalare bug, affrontare problemi e lasciare feedback - non sarà dato nessun supporto tecnico.</value>
   </data>
-  <data name="BotStats" xml:space="preserve">
-    <value>Utilizzo di memoria corrente: {0} MB.</value>
-    <comment>{0} will be replaced by number (in megabytes) of memory being used</comment>
-  </data>
+  
   <data name="ClearingDiscoveryQueue" xml:space="preserve">
     <value>Inizio coda #{0} dell'elenco scoperte Steam...</value>
     <comment>{0} will be replaced by queue number</comment>
@@ -673,9 +656,66 @@
     <value>Abbinati un totale di {0} set questo round.</value>
     <comment>{0} will be replaced by number of sets traded</comment>
   </data>
-  
-  
-  
-  
-  
+  <data name="WarningExcessiveBotsCount" xml:space="preserve">
+    <value>Stai eseguendo più account di bot personali del limite massimo raccomandato ({0}). Sappi che questa configurazione non è supportata e potrebbe causare diversi problemi con Steam, inclusa la sospensione dell'account. Controlla le FAQ per maggiori dettagli.</value>
+    <comment>{0} will be replaced by our maximum recommended bots count (number)</comment>
+  </data>
+  <data name="PluginLoaded" xml:space="preserve">
+    <value>{0} è stato caricato con successo!</value>
+    <comment>{0} will be replaced by the name of the custom ASF plugin</comment>
+  </data>
+  <data name="PluginLoading" xml:space="preserve">
+    <value>Caricamento {0} V{1}...</value>
+    <comment>{0} will be replaced by the name of the custom ASF plugin, {1} will be replaced by its version</comment>
+  </data>
+  <data name="NothingFound" xml:space="preserve">
+    <value>Nessun risultato!</value>
+  </data>
+  <data name="PluginsWarning" xml:space="preserve">
+    <value>Hai caricato su ASF uno o più plugin personalizzati. Non essendo in grado di fornire un adeguato supporto per configurazioni personalizzate, in caso di problemi è opportuno rivolgersi allo sviluppatore del plugin che state utilizzando.</value>
+  </data>
+  <data name="PleaseWait" xml:space="preserve">
+    <value>Attendere prego...</value>
+  </data>
+  <data name="EnterCommand" xml:space="preserve">
+    <value>Digita un comando: </value>
+  </data>
+  <data name="Executing" xml:space="preserve">
+    <value>Esecuzione...</value>
+  </data>
+  <data name="InteractiveConsoleEnabled" xml:space="preserve">
+    <value>La console interattiva è stata attivata, digita 'c' per entrare nella modalità comando.</value>
+  </data>
+  <data name="InteractiveConsoleNotAvailable" xml:space="preserve">
+    <value>La console interattiva non è disponibile a causa della proprietà di configurazione {0} mancante.</value>
+    <comment>{0} will be replaced by the name of the missing config property (string)</comment>
+  </data>
+  <data name="Response" xml:space="preserve">
+    <value>Risposta: {0}</value>
+    <comment>{0} will be replaced by the generated response (string)</comment>
+  </data>
+  <data name="BotGamesToRedeemInBackgroundCount" xml:space="preserve">
+    <value>Il bot ha {0} giochi rimanenti nella coda di background.</value>
+    <comment>{0} will be replaced by remaining number of games in BGR's queue</comment>
+  </data>
+  <data name="ErrorSingleInstanceRequired" xml:space="preserve">
+    <value>ASF è già in esecuzione per questa cartella di lavoro, interrompo!</value>
+  </data>
+  <data name="BotHandledConfirmations" xml:space="preserve">
+    <value>{0} conferme gestite con successo!</value>
+    <comment>{0} will be replaced by number of confirmations</comment>
+  </data>
+  <data name="BotExtraIdlingCooldown" xml:space="preserve">
+    <value>In attesa di {0} prima di poter iniziare a raccogliere le carte...</value>
+    <comment>{0} will be replaced by translated TimeSpan string (such as "1 minute")</comment>
+  </data>
+  <data name="UpdateCleanup" xml:space="preserve">
+    <value>Pulizia dei vecchi file dopo l'aggiornamento...</value>
+  </data>
+  <data name="BotGeneratingSteamParentalCode" xml:space="preserve">
+    <value>Genero un parental code per Steam, può volerci un po' di tempo, si consiglia invece di inserirlo direttamente nella configurazione...</value>
+  </data>
+  <data name="IPCConfigChanged" xml:space="preserve">
+    <value>Configurazione IPC modificata!</value>
+  </data>
 </root>

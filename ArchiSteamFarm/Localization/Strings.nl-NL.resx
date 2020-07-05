@@ -158,9 +158,6 @@ StackTrace:
     <value>{0} is ongeldig!</value>
     <comment>{0} will be replaced by object's name</comment>
   </data>
-  <data name="ErrorMobileAuthenticatorInvalidDeviceID" xml:space="preserve">
-    <value>Deze functie wordt niet uitgevoerd vanwege een ongeldig DeviceID in ASF 2FA!</value>
-  </data>
   <data name="ErrorNoBotsDefined" xml:space="preserve">
     <value>Er zijn geen bots gedefinieerd. Ben je vergeten om ASF te configureren?</value>
   </data>
@@ -247,11 +244,6 @@ StackTrace:
     <value>Lokale versie: {0} | Externe versie: {1}</value>
     <comment>{0} will be replaced by current version, {1} will be replaced by remote version</comment>
   </data>
-  <data name="UserInputDeviceID" xml:space="preserve">
-    <value>Voer je mobiele authenticator device ID in (inclusief "android:"): 
- </value>
-    <comment>Please note that this translation should end with space</comment>
-  </data>
   <data name="UserInputSteam2FA" xml:space="preserve">
     <value>Voer de 2FA code in van je Steam authenticator app: </value>
     <comment>Please note that this translation should end with space</comment>
@@ -265,16 +257,12 @@ StackTrace:
     <comment>Please note that this translation should end with space</comment>
   </data>
   <data name="UserInputSteamParentalCode" xml:space="preserve">
-    <value>Voer je Steam ouderlijktoezichtscode in: </value>
+    <value>Voer je Steam-ouderlijktoezichtcode in: </value>
     <comment>Please note that this translation should end with space</comment>
   </data>
   <data name="UserInputSteamPassword" xml:space="preserve">
     <value>Voer je Steam wachtwoord in: </value>
     <comment>Please note that this translation should end with space</comment>
-  </data>
-  <data name="UserInputUnknown" xml:space="preserve">
-    <value>Geef de ongedocumenteerde waarde van {0} op: </value>
-    <comment>{0} will be replaced by property name. Please note that this translation should end with space</comment>
   </data>
   <data name="WarningUnknownValuePleaseReport" xml:space="preserve">
     <value>Onbekende waarde ontvangen voor {0}, graag dit melden: {1}</value>
@@ -290,7 +278,7 @@ StackTrace:
     <value>Deze bot is al gestopt!</value>
   </data>
   <data name="BotNotFound" xml:space="preserve">
-    <value>Kon geen bot vinden met de naam {0}!</value>
+    <value>Geen bot gevonden met de naam {0}!</value>
     <comment>{0} will be replaced by bot's name query (string)</comment>
   </data>
   <data name="BotStatusOverview" xml:space="preserve">
@@ -407,9 +395,6 @@ StackTrace:
   <data name="BotAuthenticatorImportFinished" xml:space="preserve">
     <value>Succesvol de mobiele authenticator geïmporteerd!</value>
   </data>
-  <data name="BotAuthenticatorInvalidDeviceID" xml:space="preserve">
-    <value>Je DeviceID is incorrect of bestaat niet!</value>
-  </data>
   <data name="BotAuthenticatorToken" xml:space="preserve">
     <value>2FA Code: {0}</value>
     <comment>{0} will be replaced by generated 2FA token (string)</comment>
@@ -443,7 +428,7 @@ StackTrace:
     <value>Deze bot wordt niet gestart omdat hij uitgeschakeld is in het configuratiebestand!</value>
   </data>
   <data name="BotInvalidAuthenticatorDuringLogin" xml:space="preserve">
-    <value>De fout TwoFactorCodeMismatch is {0} keer op rij opgetreden. Je 2FA-gegevens zijn niet meer geldig of je systeemklok loopt niet synchroon. Proces wordt afgebroken!</value>
+    <value>De fout TwoFactorCodeMismatch is {0} keer op rij opgetreden. Je 2FA-gegevens zijn niet meer geldig of je systeemklok loopt niet synchroon. Proces wordt afgesloten!</value>
     <comment>{0} will be replaced by maximum allowed number of failed 2FA attempts</comment>
   </data>
   <data name="BotLoggedOff" xml:space="preserve">
@@ -551,7 +536,7 @@ StackTrace:
     <value>Verbinden...</value>
   </data>
   <data name="BotHeartBeatFailed" xml:space="preserve">
-    <value>Verbinding verbreken met de client is mislukt. Bot instantie wordt afgebroken!</value>
+    <value>Verbinding verbreken met de client is mislukt. Bot instantie wordt afgesloten!</value>
   </data>
   <data name="BotSteamDirectoryInitializationFailed" xml:space="preserve">
     <value>Kon SteamDirectory niet initialiseren: verbinden met Steam netwerk gaat mogelijk veel langer duren dan gebruikelijk!</value>
@@ -581,7 +566,7 @@ StackTrace:
     <value>De door jou ingevoerde CurrentCulture is ongeldig. ASF zal de standaardtaal blijven gebruiken!</value>
   </data>
   <data name="TranslationIncomplete" xml:space="preserve">
-    <value>ASF probeert de {0} taalmodule te gebruiken, maar het vertalen in deze taal is slechts {1} compleet. Misschien kan je ons helpen om ASF te vertalen in jouw taal?</value>
+    <value>ASF zal de {0} taalmodule gebruiken. De vertaling, inclusief de Wiki, is {1} compleet. Misschien kun je ons helpen om ASF te vertalen in jouw taal?</value>
     <comment>{0} will be replaced by culture code, such as "en-US", {1} will be replaced by completeness percentage, such as "78.5%"</comment>
   </data>
   <data name="IdlingGameNotPossible" xml:space="preserve">
@@ -615,10 +600,7 @@ StackTrace:
   <data name="WarningPreReleaseVersion" xml:space="preserve">
     <value>Je gebruikt een nieuwere versie dan de laatste versie van je update kanaal. Hou er rekening mee dat pre-release versies alleen geschikt zijn voor gebruikers die weten hoe ze bugs moeten rapporteren, kunnen omgaan met problemen en feedback kunnen geven. Er wordt geen technische ondersteuning geboden.</value>
   </data>
-  <data name="BotStats" xml:space="preserve">
-    <value>Geheugen in gebruik: {0} MB.</value>
-    <comment>{0} will be replaced by number (in megabytes) of memory being used</comment>
-  </data>
+  
   <data name="ClearingDiscoveryQueue" xml:space="preserve">
     <value>Steam-ontdekkingswachtrij afwerken #{0}...</value>
     <comment>{0} will be replaced by queue number</comment>
@@ -691,6 +673,50 @@ StackTrace:
     <value>Niets gevonden!</value>
   </data>
   <data name="PluginsWarning" xml:space="preserve">
-    <value>Je hebt een of meer aangepaste plugins geladen in ASF. Neem in geval van problemen contact op met de ontwikkelaars van de plugins die je gebruikt, aangezien we geen ondersteuning voor aangepaste instellingen kunnen bieden.</value>
+    <value>Je hebt een of meer aangepaste plugins geladen in ASF. Neem in geval van problemen contact op met de ontwikkelaars van deze plugins, aangezien we geen ondersteuning voor aangepaste instellingen kunnen bieden.</value>
+  </data>
+  <data name="PleaseWait" xml:space="preserve">
+    <value>Een ogenblik geduld...</value>
+  </data>
+  <data name="EnterCommand" xml:space="preserve">
+    <value>Voer commando in: </value>
+  </data>
+  <data name="Executing" xml:space="preserve">
+    <value>Wordt uitgevoerd...</value>
+  </data>
+  <data name="InteractiveConsoleEnabled" xml:space="preserve">
+    <value>De interactieve console is nu actief, typ 'c' om naar de opdrachtprompt te gaan.</value>
+  </data>
+  <data name="InteractiveConsoleNotAvailable" xml:space="preserve">
+    <value>De interactieve console is niet beschikbaar vanwege de ontbrekende configuratie-eigenschap {0}.</value>
+    <comment>{0} will be replaced by the name of the missing config property (string)</comment>
+  </data>
+  <data name="Response" xml:space="preserve">
+    <value>Reactie: {0}</value>
+    <comment>{0} will be replaced by the generated response (string)</comment>
+  </data>
+  <data name="BotGamesToRedeemInBackgroundCount" xml:space="preserve">
+    <value>Bot heeft {0} spellen resterend in de achtergrondwachtrij.</value>
+    <comment>{0} will be replaced by remaining number of games in BGR's queue</comment>
+  </data>
+  <data name="ErrorSingleInstanceRequired" xml:space="preserve">
+    <value>Het ASF-proces is al actief voor deze werkdirectory. Proces wordt afgesloten!</value>
+  </data>
+  <data name="BotHandledConfirmations" xml:space="preserve">
+    <value>{0} bevestiging(en) succesvol uitgevoerd!</value>
+    <comment>{0} will be replaced by number of confirmations</comment>
+  </data>
+  <data name="BotExtraIdlingCooldown" xml:space="preserve">
+    <value>{0} wachten ter controle of alles in orde is om het farmen te starten...</value>
+    <comment>{0} will be replaced by translated TimeSpan string (such as "1 minute")</comment>
+  </data>
+  <data name="UpdateCleanup" xml:space="preserve">
+    <value>Oude bestanden verwijderen na de update...</value>
+  </data>
+  <data name="BotGeneratingSteamParentalCode" xml:space="preserve">
+    <value>Steam-ouderlijktoezichtcode genereren, dit kan even duren. Als je wilt kun je de code in je configuratie plaatsen...</value>
+  </data>
+  <data name="IPCConfigChanged" xml:space="preserve">
+    <value>IPC-configuratie is gewijzigd!</value>
   </data>
 </root>

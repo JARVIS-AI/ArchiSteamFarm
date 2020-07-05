@@ -1,18 +1,18 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
 // /_/   \_\|_|   \___||_| |_||_||____/  \__|\___| \__,_||_| |_| |_||_|   \__,_||_|   |_| |_| |_|
-// 
-// Copyright 2015-2019 Łukasz "JustArchi" Domeradzki
+// |
+// Copyright 2015-2020 Łukasz "JustArchi" Domeradzki
 // Contact: JustArchi@JustArchi.net
-// 
+// |
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+// |
 // http://www.apache.org/licenses/LICENSE-2.0
-// 
+// |
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -32,7 +32,6 @@ using ArchiSteamFarm.NLog;
 using JetBrains.Annotations;
 using SteamKit2;
 using SteamKit2.Internal;
-using SteamKit2.Unified.Internal;
 
 namespace ArchiSteamFarm {
 	public sealed class ArchiHandler : ClientMsgHandler {
@@ -44,10 +43,11 @@ namespace ArchiSteamFarm {
 		private readonly SteamUnifiedMessages.UnifiedService<IEcon> UnifiedEconService;
 		private readonly SteamUnifiedMessages.UnifiedService<IFriendMessages> UnifiedFriendMessagesService;
 		private readonly SteamUnifiedMessages.UnifiedService<IPlayer> UnifiedPlayerService;
+		private readonly SteamUnifiedMessages.UnifiedService<ITwoFactor> UnifiedTwoFactorService;
 
 		internal DateTime LastPacketReceived { get; private set; }
 
-		internal ArchiHandler([NotNull] ArchiLogger archiLogger, [NotNull] SteamUnifiedMessages steamUnifiedMessages) {
+		internal ArchiHandler([JetBrains.Annotations.NotNull] ArchiLogger archiLogger, [JetBrains.Annotations.NotNull] SteamUnifiedMessages steamUnifiedMessages) {
 			if ((archiLogger == null) || (steamUnifiedMessages == null)) {
 				throw new ArgumentNullException(nameof(archiLogger) + " || " + nameof(steamUnifiedMessages));
 			}
@@ -58,6 +58,7 @@ namespace ArchiSteamFarm {
 			UnifiedEconService = steamUnifiedMessages.CreateService<IEcon>();
 			UnifiedFriendMessagesService = steamUnifiedMessages.CreateService<IFriendMessages>();
 			UnifiedPlayerService = steamUnifiedMessages.CreateService<IPlayer>();
+			UnifiedTwoFactorService = steamUnifiedMessages.CreateService<ITwoFactor>();
 		}
 
 		public override void HandleMsg(IPacketMsg packetMsg) {
@@ -67,35 +68,53 @@ namespace ArchiSteamFarm {
 				return;
 			}
 
+			if (Client == null) {
+				ArchiLogger.LogNullError(nameof(Client));
+
+				return;
+			}
+
 			LastPacketReceived = DateTime.UtcNow;
 
 			switch (packetMsg.MsgType) {
+				case EMsg.ClientCommentNotifications:
+					ClientMsgProtobuf<CMsgClientCommentNotifications> commentNotifications = new ClientMsgProtobuf<CMsgClientCommentNotifications>(packetMsg);
+					Client.PostCallback(new UserNotificationsCallback(packetMsg.TargetJobID, commentNotifications.Body));
+
+					break;
 				case EMsg.ClientItemAnnouncements:
-					HandleItemAnnouncements(packetMsg);
+					ClientMsgProtobuf<CMsgClientItemAnnouncements> itemAnnouncements = new ClientMsgProtobuf<CMsgClientItemAnnouncements>(packetMsg);
+					Client.PostCallback(new UserNotificationsCallback(packetMsg.TargetJobID, itemAnnouncements.Body));
 
 					break;
 				case EMsg.ClientPlayingSessionState:
-					HandlePlayingSessionState(packetMsg);
+					ClientMsgProtobuf<CMsgClientPlayingSessionState> playingSessionState = new ClientMsgProtobuf<CMsgClientPlayingSessionState>(packetMsg);
+					Client.PostCallback(new PlayingSessionStateCallback(packetMsg.TargetJobID, playingSessionState.Body));
 
 					break;
 				case EMsg.ClientPurchaseResponse:
-					HandlePurchaseResponse(packetMsg);
+					ClientMsgProtobuf<CMsgClientPurchaseResponse> purchaseResponse = new ClientMsgProtobuf<CMsgClientPurchaseResponse>(packetMsg);
+					Client.PostCallback(new PurchaseResponseCallback(packetMsg.TargetJobID, purchaseResponse.Body));
 
 					break;
 				case EMsg.ClientRedeemGuestPassResponse:
-					HandleRedeemGuestPassResponse(packetMsg);
+					ClientMsgProtobuf<CMsgClientRedeemGuestPassResponse> redeemGuestPassResponse = new ClientMsgProtobuf<CMsgClientRedeemGuestPassResponse>(packetMsg);
+					Client.PostCallback(new RedeemGuestPassResponseCallback(packetMsg.TargetJobID, redeemGuestPassResponse.Body));
 
 					break;
 				case EMsg.ClientSharedLibraryLockStatus:
-					HandleSharedLibraryLockStatus(packetMsg);
+					ClientMsgProtobuf<CMsgClientSharedLibraryLockStatus> sharedLibraryLockStatus = new ClientMsgProtobuf<CMsgClientSharedLibraryLockStatus>(packetMsg);
+					Client.PostCallback(new SharedLibraryLockStatusCallback(packetMsg.TargetJobID, sharedLibraryLockStatus.Body));
 
 					break;
 				case EMsg.ClientUserNotifications:
-					HandleUserNotifications(packetMsg);
+					ClientMsgProtobuf<CMsgClientUserNotifications> userNotifications = new ClientMsgProtobuf<CMsgClientUserNotifications>(packetMsg);
+					Client.PostCallback(new UserNotificationsCallback(packetMsg.TargetJobID, userNotifications.Body));
 
 					break;
 				case EMsg.ClientVanityURLChangedNotification:
-					HandleVanityURLChangedNotification(packetMsg);
+					ClientMsgProtobuf<CMsgClientVanityURLChangedNotification> vanityURLChangedNotification = new ClientMsgProtobuf<CMsgClientVanityURLChangedNotification>(packetMsg);
+					Client.PostCallback(new VanityURLChangedCallback(packetMsg.TargetJobID, vanityURLChangedNotification.Body));
 
 					break;
 			}
@@ -104,6 +123,12 @@ namespace ArchiSteamFarm {
 		internal void AckChatMessage(ulong chatGroupID, ulong chatID, uint timestamp) {
 			if ((chatGroupID == 0) || (chatID == 0) || (timestamp == 0)) {
 				ArchiLogger.LogNullError(nameof(chatGroupID) + " || " + nameof(chatID) + " || " + nameof(timestamp));
+
+				return;
+			}
+
+			if (Client == null) {
+				ArchiLogger.LogNullError(nameof(Client));
 
 				return;
 			}
@@ -122,8 +147,14 @@ namespace ArchiSteamFarm {
 		}
 
 		internal void AckMessage(ulong steamID, uint timestamp) {
-			if ((steamID == 0) || (timestamp == 0)) {
+			if ((steamID == 0) || !new SteamID(steamID).IsIndividualAccount || (timestamp == 0)) {
 				ArchiLogger.LogNullError(nameof(steamID) + " || " + nameof(timestamp));
+
+				return;
+			}
+
+			if (Client == null) {
+				ArchiLogger.LogNullError(nameof(Client));
 
 				return;
 			}
@@ -140,9 +171,15 @@ namespace ArchiSteamFarm {
 			UnifiedFriendMessagesService.SendMessage(x => x.AckMessage(request), true);
 		}
 
-		internal void AcknowledgeClanInvite(ulong clanID, bool acceptInvite) {
-			if (clanID == 0) {
-				ArchiLogger.LogNullError(nameof(clanID));
+		internal void AcknowledgeClanInvite(ulong steamID, bool acceptInvite) {
+			if ((steamID == 0) || !new SteamID(steamID).IsClanAccount) {
+				ArchiLogger.LogNullError(nameof(steamID));
+
+				return;
+			}
+
+			if (Client == null) {
+				ArchiLogger.LogNullError(nameof(Client));
 
 				return;
 			}
@@ -153,7 +190,7 @@ namespace ArchiSteamFarm {
 
 			ClientMsg<CMsgClientAcknowledgeClanInvite> request = new ClientMsg<CMsgClientAcknowledgeClanInvite> {
 				Body = {
-					ClanID = clanID,
+					ClanID = steamID,
 					AcceptInvite = acceptInvite
 				}
 			};
@@ -162,8 +199,14 @@ namespace ArchiSteamFarm {
 		}
 
 		internal async Task<bool> AddFriend(ulong steamID) {
-			if (steamID == 0) {
+			if ((steamID == 0) || !new SteamID(steamID).IsIndividualAccount) {
 				ArchiLogger.LogNullError(nameof(steamID));
+
+				return false;
+			}
+
+			if (Client == null) {
+				ArchiLogger.LogNullError(nameof(Client));
 
 				return false;
 			}
@@ -177,15 +220,9 @@ namespace ArchiSteamFarm {
 			SteamUnifiedMessages.ServiceMethodResponse response;
 
 			try {
-				response = await UnifiedPlayerService.SendMessage(x => x.AddFriend(request));
+				response = await UnifiedPlayerService.SendMessage(x => x.AddFriend(request)).ToLongRunningTask().ConfigureAwait(false);
 			} catch (Exception e) {
 				ArchiLogger.LogGenericWarningException(e);
-
-				return false;
-			}
-
-			if (response == null) {
-				ArchiLogger.LogNullError(nameof(response));
 
 				return false;
 			}
@@ -196,6 +233,12 @@ namespace ArchiSteamFarm {
 		internal async Task<ulong> GetClanChatGroupID(ulong steamID) {
 			if ((steamID == 0) || !new SteamID(steamID).IsClanAccount) {
 				ArchiLogger.LogNullError(nameof(steamID));
+
+				return 0;
+			}
+
+			if (Client == null) {
+				ArchiLogger.LogNullError(nameof(Client));
 
 				return 0;
 			}
@@ -212,15 +255,9 @@ namespace ArchiSteamFarm {
 			SteamUnifiedMessages.ServiceMethodResponse response;
 
 			try {
-				response = await UnifiedClanChatRoomsService.SendMessage(x => x.GetClanChatRoomInfo(request));
+				response = await UnifiedClanChatRoomsService.SendMessage(x => x.GetClanChatRoomInfo(request)).ToLongRunningTask().ConfigureAwait(false);
 			} catch (Exception e) {
 				ArchiLogger.LogGenericWarningException(e);
-
-				return 0;
-			}
-
-			if (response == null) {
-				ArchiLogger.LogNullError(nameof(response));
 
 				return 0;
 			}
@@ -235,6 +272,12 @@ namespace ArchiSteamFarm {
 		}
 
 		internal async Task<uint?> GetLevel() {
+			if (Client == null) {
+				ArchiLogger.LogNullError(nameof(Client));
+
+				return null;
+			}
+
 			if (!Client.IsConnected) {
 				return null;
 			}
@@ -243,15 +286,9 @@ namespace ArchiSteamFarm {
 			SteamUnifiedMessages.ServiceMethodResponse response;
 
 			try {
-				response = await UnifiedPlayerService.SendMessage(x => x.GetGameBadgeLevels(request));
+				response = await UnifiedPlayerService.SendMessage(x => x.GetGameBadgeLevels(request)).ToLongRunningTask().ConfigureAwait(false);
 			} catch (Exception e) {
 				ArchiLogger.LogGenericWarningException(e);
-
-				return null;
-			}
-
-			if (response == null) {
-				ArchiLogger.LogNullError(nameof(response));
 
 				return null;
 			}
@@ -266,6 +303,12 @@ namespace ArchiSteamFarm {
 		}
 
 		internal async Task<HashSet<ulong>> GetMyChatGroupIDs() {
+			if (Client == null) {
+				ArchiLogger.LogNullError(nameof(Client));
+
+				return null;
+			}
+
 			if (!Client.IsConnected) {
 				return null;
 			}
@@ -275,15 +318,9 @@ namespace ArchiSteamFarm {
 			SteamUnifiedMessages.ServiceMethodResponse response;
 
 			try {
-				response = await UnifiedChatRoomService.SendMessage(x => x.GetMyChatRoomGroups(request));
+				response = await UnifiedChatRoomService.SendMessage(x => x.GetMyChatRoomGroups(request)).ToLongRunningTask().ConfigureAwait(false);
 			} catch (Exception e) {
 				ArchiLogger.LogGenericWarningException(e);
-
-				return null;
-			}
-
-			if (response == null) {
-				ArchiLogger.LogNullError(nameof(response));
 
 				return null;
 			}
@@ -297,7 +334,45 @@ namespace ArchiSteamFarm {
 			return body.chat_room_groups.Select(chatRoom => chatRoom.group_summary.chat_group_id).ToHashSet();
 		}
 
+		internal async Task<CPrivacySettings> GetPrivacySettings() {
+			if (Client == null) {
+				ArchiLogger.LogNullError(nameof(Client));
+
+				return null;
+			}
+
+			if (!Client.IsConnected) {
+				return null;
+			}
+
+			CPlayer_GetPrivacySettings_Request request = new CPlayer_GetPrivacySettings_Request();
+
+			SteamUnifiedMessages.ServiceMethodResponse response;
+
+			try {
+				response = await UnifiedPlayerService.SendMessage(x => x.GetPrivacySettings(request)).ToLongRunningTask().ConfigureAwait(false);
+			} catch (Exception e) {
+				ArchiLogger.LogGenericWarningException(e);
+
+				return null;
+			}
+
+			if (response.Result != EResult.OK) {
+				return null;
+			}
+
+			CPlayer_GetPrivacySettings_Response body = response.GetDeserializedResponse<CPlayer_GetPrivacySettings_Response>();
+
+			return body.privacy_settings;
+		}
+
 		internal async Task<string> GetTradeToken() {
+			if (Client == null) {
+				ArchiLogger.LogNullError(nameof(Client));
+
+				return null;
+			}
+
 			if (!Client.IsConnected) {
 				return null;
 			}
@@ -307,15 +382,9 @@ namespace ArchiSteamFarm {
 			SteamUnifiedMessages.ServiceMethodResponse response;
 
 			try {
-				response = await UnifiedEconService.SendMessage(x => x.GetTradeOfferAccessToken(request));
+				response = await UnifiedEconService.SendMessage(x => x.GetTradeOfferAccessToken(request)).ToLongRunningTask().ConfigureAwait(false);
 			} catch (Exception e) {
 				ArchiLogger.LogGenericWarningException(e);
-
-				return null;
-			}
-
-			if (response == null) {
-				ArchiLogger.LogNullError(nameof(response));
 
 				return null;
 			}
@@ -329,9 +398,55 @@ namespace ArchiSteamFarm {
 			return body.trade_offer_access_token;
 		}
 
+		internal async Task<string> GetTwoFactorDeviceIdentifier(ulong steamID) {
+			if ((steamID == 0) || !new SteamID(steamID).IsIndividualAccount) {
+				ArchiLogger.LogNullError(nameof(steamID));
+
+				return null;
+			}
+
+			if (Client == null) {
+				ArchiLogger.LogNullError(nameof(Client));
+
+				return null;
+			}
+
+			if (!Client.IsConnected) {
+				return null;
+			}
+
+			CTwoFactor_Status_Request request = new CTwoFactor_Status_Request {
+				steamid = steamID
+			};
+
+			SteamUnifiedMessages.ServiceMethodResponse response;
+
+			try {
+				response = await UnifiedTwoFactorService.SendMessage(x => x.QueryStatus(request)).ToLongRunningTask().ConfigureAwait(false);
+			} catch (Exception e) {
+				ArchiLogger.LogGenericWarningException(e);
+
+				return null;
+			}
+
+			if (response.Result != EResult.OK) {
+				return null;
+			}
+
+			CTwoFactor_Status_Response body = response.GetDeserializedResponse<CTwoFactor_Status_Response>();
+
+			return body.device_identifier;
+		}
+
 		internal async Task<bool> JoinChatRoomGroup(ulong chatGroupID) {
 			if (chatGroupID == 0) {
 				ArchiLogger.LogNullError(nameof(chatGroupID));
+
+				return false;
+			}
+
+			if (Client == null) {
+				ArchiLogger.LogNullError(nameof(Client));
 
 				return false;
 			}
@@ -345,15 +460,9 @@ namespace ArchiSteamFarm {
 			SteamUnifiedMessages.ServiceMethodResponse response;
 
 			try {
-				response = await UnifiedChatRoomService.SendMessage(x => x.JoinChatRoomGroup(request));
+				response = await UnifiedChatRoomService.SendMessage(x => x.JoinChatRoomGroup(request)).ToLongRunningTask().ConfigureAwait(false);
 			} catch (Exception e) {
 				ArchiLogger.LogGenericWarningException(e);
-
-				return false;
-			}
-
-			if (response == null) {
-				ArchiLogger.LogNullError(nameof(response));
 
 				return false;
 			}
@@ -368,11 +477,21 @@ namespace ArchiSteamFarm {
 				return;
 			}
 
+			if (Client == null) {
+				ArchiLogger.LogNullError(nameof(Client));
+
+				return;
+			}
+
 			if (!Client.IsConnected) {
 				return;
 			}
 
-			ClientMsgProtobuf<CMsgClientGamesPlayed> request = new ClientMsgProtobuf<CMsgClientGamesPlayed>(EMsg.ClientGamesPlayed);
+			ClientMsgProtobuf<CMsgClientGamesPlayed> request = new ClientMsgProtobuf<CMsgClientGamesPlayed>(EMsg.ClientGamesPlayedWithDataBlob) {
+				Body = {
+					client_os_type = (uint) Bot.OSType
+				}
+			};
 
 			byte maxGamesCount = MaxGamesPlayedConcurrently;
 
@@ -414,6 +533,12 @@ namespace ArchiSteamFarm {
 				return null;
 			}
 
+			if (Client == null) {
+				ArchiLogger.LogNullError(nameof(Client));
+
+				return null;
+			}
+
 			if (!Client.IsConnected) {
 				return null;
 			}
@@ -426,7 +551,7 @@ namespace ArchiSteamFarm {
 			Client.Send(request);
 
 			try {
-				return await new AsyncJob<RedeemGuestPassResponseCallback>(Client, request.SourceJobID);
+				return await new AsyncJob<RedeemGuestPassResponseCallback>(Client, request.SourceJobID).ToLongRunningTask().ConfigureAwait(false);
 			} catch (Exception e) {
 				ArchiLogger.LogGenericException(e);
 
@@ -437,6 +562,12 @@ namespace ArchiSteamFarm {
 		internal async Task<PurchaseResponseCallback> RedeemKey(string key) {
 			if (string.IsNullOrEmpty(key)) {
 				ArchiLogger.LogNullError(nameof(key));
+
+				return null;
+			}
+
+			if (Client == null) {
+				ArchiLogger.LogNullError(nameof(Client));
 
 				return null;
 			}
@@ -453,7 +584,7 @@ namespace ArchiSteamFarm {
 			Client.Send(request);
 
 			try {
-				return await new AsyncJob<PurchaseResponseCallback>(Client, request.SourceJobID);
+				return await new AsyncJob<PurchaseResponseCallback>(Client, request.SourceJobID).ToLongRunningTask().ConfigureAwait(false);
 			} catch (Exception e) {
 				ArchiLogger.LogGenericException(e);
 
@@ -462,8 +593,14 @@ namespace ArchiSteamFarm {
 		}
 
 		internal async Task<bool> RemoveFriend(ulong steamID) {
-			if (steamID == 0) {
+			if ((steamID == 0) || !new SteamID(steamID).IsIndividualAccount) {
 				ArchiLogger.LogNullError(nameof(steamID));
+
+				return false;
+			}
+
+			if (Client == null) {
+				ArchiLogger.LogNullError(nameof(Client));
 
 				return false;
 			}
@@ -477,15 +614,9 @@ namespace ArchiSteamFarm {
 			SteamUnifiedMessages.ServiceMethodResponse response;
 
 			try {
-				response = await UnifiedPlayerService.SendMessage(x => x.RemoveFriend(request));
+				response = await UnifiedPlayerService.SendMessage(x => x.RemoveFriend(request)).ToLongRunningTask().ConfigureAwait(false);
 			} catch (Exception e) {
 				ArchiLogger.LogGenericWarningException(e);
-
-				return false;
-			}
-
-			if (response == null) {
-				ArchiLogger.LogNullError(nameof(response));
 
 				return false;
 			}
@@ -494,6 +625,12 @@ namespace ArchiSteamFarm {
 		}
 
 		internal void RequestItemAnnouncements() {
+			if (Client == null) {
+				ArchiLogger.LogNullError(nameof(Client));
+
+				return;
+			}
+
 			if (!Client.IsConnected) {
 				return;
 			}
@@ -503,10 +640,16 @@ namespace ArchiSteamFarm {
 		}
 
 		internal async Task<EResult> SendMessage(ulong steamID, string message) {
-			if ((steamID == 0) || string.IsNullOrEmpty(message)) {
+			if ((steamID == 0) || !new SteamID(steamID).IsIndividualAccount || string.IsNullOrEmpty(message)) {
 				ArchiLogger.LogNullError(nameof(steamID) + " || " + nameof(message));
 
-				return EResult.Fail;
+				return EResult.Invalid;
+			}
+
+			if (Client == null) {
+				ArchiLogger.LogNullError(nameof(Client));
+
+				return EResult.Invalid;
 			}
 
 			if (!Client.IsConnected) {
@@ -523,17 +666,11 @@ namespace ArchiSteamFarm {
 			SteamUnifiedMessages.ServiceMethodResponse response;
 
 			try {
-				response = await UnifiedFriendMessagesService.SendMessage(x => x.SendMessage(request));
+				response = await UnifiedFriendMessagesService.SendMessage(x => x.SendMessage(request)).ToLongRunningTask().ConfigureAwait(false);
 			} catch (Exception e) {
 				ArchiLogger.LogGenericWarningException(e);
 
 				return EResult.Timeout;
-			}
-
-			if (response == null) {
-				ArchiLogger.LogNullError(nameof(response));
-
-				return EResult.Fail;
 			}
 
 			return response.Result;
@@ -543,7 +680,13 @@ namespace ArchiSteamFarm {
 			if ((chatGroupID == 0) || (chatID == 0) || string.IsNullOrEmpty(message)) {
 				ArchiLogger.LogNullError(nameof(chatGroupID) + " || " + nameof(chatID) + " || " + nameof(message));
 
-				return EResult.Fail;
+				return EResult.Invalid;
+			}
+
+			if (Client == null) {
+				ArchiLogger.LogNullError(nameof(Client));
+
+				return EResult.Invalid;
 			}
 
 			if (!Client.IsConnected) {
@@ -559,17 +702,46 @@ namespace ArchiSteamFarm {
 			SteamUnifiedMessages.ServiceMethodResponse response;
 
 			try {
-				response = await UnifiedChatRoomService.SendMessage(x => x.SendChatMessage(request));
+				response = await UnifiedChatRoomService.SendMessage(x => x.SendChatMessage(request)).ToLongRunningTask().ConfigureAwait(false);
 			} catch (Exception e) {
 				ArchiLogger.LogGenericWarningException(e);
 
 				return EResult.Timeout;
 			}
 
-			if (response == null) {
-				ArchiLogger.LogNullError(nameof(response));
+			return response.Result;
+		}
 
-				return EResult.Fail;
+		internal async Task<EResult> SendTypingStatus(ulong steamID) {
+			if ((steamID == 0) || !new SteamID(steamID).IsIndividualAccount) {
+				ArchiLogger.LogNullError(nameof(steamID));
+
+				return EResult.Invalid;
+			}
+
+			if (Client == null) {
+				ArchiLogger.LogNullError(nameof(Client));
+
+				return EResult.Invalid;
+			}
+
+			if (!Client.IsConnected) {
+				return EResult.NoConnection;
+			}
+
+			CFriendMessages_SendMessage_Request request = new CFriendMessages_SendMessage_Request {
+				chat_entry_type = (int) EChatEntryType.Typing,
+				steamid = steamID
+			};
+
+			SteamUnifiedMessages.ServiceMethodResponse response;
+
+			try {
+				response = await UnifiedFriendMessagesService.SendMessage(x => x.SendMessage(request)).ToLongRunningTask().ConfigureAwait(false);
+			} catch (Exception e) {
+				ArchiLogger.LogGenericWarningException(e);
+
+				return EResult.Timeout;
 			}
 
 			return response.Result;
@@ -582,89 +754,18 @@ namespace ArchiSteamFarm {
 				return;
 			}
 
+			if (Client == null) {
+				ArchiLogger.LogNullError(nameof(Client));
+
+				return;
+			}
+
 			if (!Client.IsConnected) {
 				return;
 			}
 
 			ClientMsgProtobuf<CMsgClientUIMode> request = new ClientMsgProtobuf<CMsgClientUIMode>(EMsg.ClientCurrentUIMode) { Body = { chat_mode = chatMode } };
 			Client.Send(request);
-		}
-
-		private void HandleItemAnnouncements(IPacketMsg packetMsg) {
-			if (packetMsg == null) {
-				ArchiLogger.LogNullError(nameof(packetMsg));
-
-				return;
-			}
-
-			ClientMsgProtobuf<CMsgClientItemAnnouncements> response = new ClientMsgProtobuf<CMsgClientItemAnnouncements>(packetMsg);
-			Client.PostCallback(new UserNotificationsCallback(packetMsg.TargetJobID, response.Body));
-		}
-
-		private void HandlePlayingSessionState(IPacketMsg packetMsg) {
-			if (packetMsg == null) {
-				ArchiLogger.LogNullError(nameof(packetMsg));
-
-				return;
-			}
-
-			ClientMsgProtobuf<CMsgClientPlayingSessionState> response = new ClientMsgProtobuf<CMsgClientPlayingSessionState>(packetMsg);
-			Client.PostCallback(new PlayingSessionStateCallback(packetMsg.TargetJobID, response.Body));
-		}
-
-		private void HandlePurchaseResponse(IPacketMsg packetMsg) {
-			if (packetMsg == null) {
-				ArchiLogger.LogNullError(nameof(packetMsg));
-
-				return;
-			}
-
-			ClientMsgProtobuf<CMsgClientPurchaseResponse> response = new ClientMsgProtobuf<CMsgClientPurchaseResponse>(packetMsg);
-			Client.PostCallback(new PurchaseResponseCallback(packetMsg.TargetJobID, response.Body));
-		}
-
-		private void HandleRedeemGuestPassResponse(IPacketMsg packetMsg) {
-			if (packetMsg == null) {
-				ArchiLogger.LogNullError(nameof(packetMsg));
-
-				return;
-			}
-
-			ClientMsgProtobuf<CMsgClientRedeemGuestPassResponse> response = new ClientMsgProtobuf<CMsgClientRedeemGuestPassResponse>(packetMsg);
-			Client.PostCallback(new RedeemGuestPassResponseCallback(packetMsg.TargetJobID, response.Body));
-		}
-
-		private void HandleSharedLibraryLockStatus(IPacketMsg packetMsg) {
-			if (packetMsg == null) {
-				ArchiLogger.LogNullError(nameof(packetMsg));
-
-				return;
-			}
-
-			ClientMsgProtobuf<CMsgClientSharedLibraryLockStatus> response = new ClientMsgProtobuf<CMsgClientSharedLibraryLockStatus>(packetMsg);
-			Client.PostCallback(new SharedLibraryLockStatusCallback(packetMsg.TargetJobID, response.Body));
-		}
-
-		private void HandleUserNotifications(IPacketMsg packetMsg) {
-			if (packetMsg == null) {
-				ArchiLogger.LogNullError(nameof(packetMsg));
-
-				return;
-			}
-
-			ClientMsgProtobuf<CMsgClientUserNotifications> response = new ClientMsgProtobuf<CMsgClientUserNotifications>(packetMsg);
-			Client.PostCallback(new UserNotificationsCallback(packetMsg.TargetJobID, response.Body));
-		}
-
-		private void HandleVanityURLChangedNotification(IPacketMsg packetMsg) {
-			if (packetMsg == null) {
-				ArchiLogger.LogNullError(nameof(packetMsg));
-
-				return;
-			}
-
-			ClientMsgProtobuf<CMsgClientVanityURLChangedNotification> response = new ClientMsgProtobuf<CMsgClientVanityURLChangedNotification>(packetMsg);
-			Client.PostCallback(new VanityURLChangedCallback(packetMsg.TargetJobID, response.Body));
 		}
 
 		[SuppressMessage("ReSharper", "MemberCanBeInternal")]
@@ -674,7 +775,16 @@ namespace ArchiSteamFarm {
 			public EPurchaseResultDetail PurchaseResultDetail { get; internal set; }
 			public EResult Result { get; internal set; }
 
-			internal PurchaseResponseCallback([NotNull] JobID jobID, [NotNull] CMsgClientPurchaseResponse msg) {
+			internal PurchaseResponseCallback(EResult result, EPurchaseResultDetail purchaseResult) {
+				if (!Enum.IsDefined(typeof(EResult), result) || !Enum.IsDefined(typeof(EPurchaseResultDetail), purchaseResult)) {
+					throw new ArgumentNullException(nameof(result) + " || " + nameof(purchaseResult));
+				}
+
+				Result = result;
+				PurchaseResultDetail = purchaseResult;
+			}
+
+			internal PurchaseResponseCallback([JetBrains.Annotations.NotNull] JobID jobID, [JetBrains.Annotations.NotNull] CMsgClientPurchaseResponse msg) {
 				if ((jobID == null) || (msg == null)) {
 					throw new ArgumentNullException(nameof(jobID) + " || " + nameof(msg));
 				}
@@ -737,54 +847,10 @@ namespace ArchiSteamFarm {
 			}
 		}
 
-		internal sealed class PlayingSessionStateCallback : CallbackMsg {
-			internal readonly bool PlayingBlocked;
-
-			internal PlayingSessionStateCallback([NotNull] JobID jobID, [NotNull] CMsgClientPlayingSessionState msg) {
-				if ((jobID == null) || (msg == null)) {
-					throw new ArgumentNullException(nameof(jobID) + " || " + nameof(msg));
-				}
-
-				JobID = jobID;
-				PlayingBlocked = msg.playing_blocked;
-			}
-		}
-
-		internal sealed class RedeemGuestPassResponseCallback : CallbackMsg {
-			internal readonly EResult Result;
-
-			internal RedeemGuestPassResponseCallback([NotNull] JobID jobID, [NotNull] CMsgClientRedeemGuestPassResponse msg) {
-				if ((jobID == null) || (msg == null)) {
-					throw new ArgumentNullException(nameof(jobID) + " || " + nameof(msg));
-				}
-
-				JobID = jobID;
-				Result = (EResult) msg.eresult;
-			}
-		}
-
-		internal sealed class SharedLibraryLockStatusCallback : CallbackMsg {
-			internal readonly ulong LibraryLockedBySteamID;
-
-			internal SharedLibraryLockStatusCallback([NotNull] JobID jobID, [NotNull] CMsgClientSharedLibraryLockStatus msg) {
-				if ((jobID == null) || (msg == null)) {
-					throw new ArgumentNullException(nameof(jobID) + " || " + nameof(msg));
-				}
-
-				JobID = jobID;
-
-				if (msg.own_library_locked_by == 0) {
-					return;
-				}
-
-				LibraryLockedBySteamID = new SteamID(msg.own_library_locked_by, EUniverse.Public, EAccountType.Individual);
-			}
-		}
-
-		internal sealed class UserNotificationsCallback : CallbackMsg {
+		public sealed class UserNotificationsCallback : CallbackMsg {
 			internal readonly Dictionary<EUserNotification, uint> Notifications;
 
-			internal UserNotificationsCallback([NotNull] JobID jobID, [NotNull] CMsgClientUserNotifications msg) {
+			internal UserNotificationsCallback([JetBrains.Annotations.NotNull] JobID jobID, [JetBrains.Annotations.NotNull] CMsgClientUserNotifications msg) {
 				if ((jobID == null) || (msg == null)) {
 					throw new ArgumentNullException(nameof(jobID) + " || " + nameof(msg));
 				}
@@ -792,7 +858,8 @@ namespace ArchiSteamFarm {
 				JobID = jobID;
 
 				// We might get null body here, and that means there are no notifications related to trading
-				Notifications = new Dictionary<EUserNotification, uint>(1) { { EUserNotification.Trading, 0 } };
+				// TODO: Check if this workaround is still needed
+				Notifications = new Dictionary<EUserNotification, uint> { { EUserNotification.Trading, 0 } };
 
 				if (msg.notifications == null) {
 					return;
@@ -812,19 +879,18 @@ namespace ArchiSteamFarm {
 						case EUserNotification.Items:
 						case EUserNotification.ModeratorMessages:
 						case EUserNotification.Trading:
-
 							break;
 						default:
 							ASF.ArchiLogger.LogGenericError(string.Format(Strings.WarningUnknownValuePleaseReport, nameof(type), type));
 
-							continue;
+							break;
 					}
 
 					Notifications[type] = notification.count;
 				}
 			}
 
-			internal UserNotificationsCallback([NotNull] JobID jobID, [NotNull] CMsgClientItemAnnouncements msg) {
+			internal UserNotificationsCallback([JetBrains.Annotations.NotNull] JobID jobID, [JetBrains.Annotations.NotNull] CMsgClientItemAnnouncements msg) {
 				if ((jobID == null) || (msg == null)) {
 					throw new ArgumentNullException(nameof(jobID) + " || " + nameof(msg));
 				}
@@ -833,8 +899,17 @@ namespace ArchiSteamFarm {
 				Notifications = new Dictionary<EUserNotification, uint>(1) { { EUserNotification.Items, msg.count_new_items } };
 			}
 
+			internal UserNotificationsCallback([JetBrains.Annotations.NotNull] JobID jobID, [JetBrains.Annotations.NotNull] CMsgClientCommentNotifications msg) {
+				if ((jobID == null) || (msg == null)) {
+					throw new ArgumentNullException(nameof(jobID) + " || " + nameof(msg));
+				}
+
+				JobID = jobID;
+				Notifications = new Dictionary<EUserNotification, uint>(1) { { EUserNotification.Comments, msg.count_new_comments + msg.count_new_comments_owner + msg.count_new_comments_subscriptions } };
+			}
+
 			[PublicAPI]
-			internal enum EUserNotification : byte {
+			public enum EUserNotification : byte {
 				Unknown,
 				Trading,
 				GameTurns,
@@ -850,10 +925,54 @@ namespace ArchiSteamFarm {
 			}
 		}
 
+		internal sealed class PlayingSessionStateCallback : CallbackMsg {
+			internal readonly bool PlayingBlocked;
+
+			internal PlayingSessionStateCallback([JetBrains.Annotations.NotNull] JobID jobID, [JetBrains.Annotations.NotNull] CMsgClientPlayingSessionState msg) {
+				if ((jobID == null) || (msg == null)) {
+					throw new ArgumentNullException(nameof(jobID) + " || " + nameof(msg));
+				}
+
+				JobID = jobID;
+				PlayingBlocked = msg.playing_blocked;
+			}
+		}
+
+		internal sealed class RedeemGuestPassResponseCallback : CallbackMsg {
+			internal readonly EResult Result;
+
+			internal RedeemGuestPassResponseCallback([JetBrains.Annotations.NotNull] JobID jobID, [JetBrains.Annotations.NotNull] CMsgClientRedeemGuestPassResponse msg) {
+				if ((jobID == null) || (msg == null)) {
+					throw new ArgumentNullException(nameof(jobID) + " || " + nameof(msg));
+				}
+
+				JobID = jobID;
+				Result = (EResult) msg.eresult;
+			}
+		}
+
+		internal sealed class SharedLibraryLockStatusCallback : CallbackMsg {
+			internal readonly ulong LibraryLockedBySteamID;
+
+			internal SharedLibraryLockStatusCallback([JetBrains.Annotations.NotNull] JobID jobID, [JetBrains.Annotations.NotNull] CMsgClientSharedLibraryLockStatus msg) {
+				if ((jobID == null) || (msg == null)) {
+					throw new ArgumentNullException(nameof(jobID) + " || " + nameof(msg));
+				}
+
+				JobID = jobID;
+
+				if (msg.own_library_locked_by == 0) {
+					return;
+				}
+
+				LibraryLockedBySteamID = new SteamID(msg.own_library_locked_by, EUniverse.Public, EAccountType.Individual);
+			}
+		}
+
 		internal sealed class VanityURLChangedCallback : CallbackMsg {
 			internal readonly string VanityURL;
 
-			internal VanityURLChangedCallback([NotNull] JobID jobID, [NotNull] CMsgClientVanityURLChangedNotification msg) {
+			internal VanityURLChangedCallback([JetBrains.Annotations.NotNull] JobID jobID, [JetBrains.Annotations.NotNull] CMsgClientVanityURLChangedNotification msg) {
 				if ((jobID == null) || (msg == null)) {
 					throw new ArgumentNullException(nameof(jobID) + " || " + nameof(msg));
 				}
@@ -861,6 +980,13 @@ namespace ArchiSteamFarm {
 				JobID = jobID;
 				VanityURL = msg.vanity_url;
 			}
+		}
+
+		internal enum EPrivacySetting : byte {
+			Unknown,
+			Private,
+			FriendsOnly,
+			Public
 		}
 	}
 }

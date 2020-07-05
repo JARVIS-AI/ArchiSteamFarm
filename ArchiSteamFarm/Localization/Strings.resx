@@ -159,9 +159,6 @@ StackTrace:
     <value>{0} is invalid!</value>
     <comment>{0} will be replaced by object's name</comment>
   </data>
-  <data name="ErrorMobileAuthenticatorInvalidDeviceID" xml:space="preserve">
-    <value>Refusing to execute this function due to invalid DeviceID in ASF 2FA!</value>
-  </data>
   <data name="ErrorNoBotsDefined" xml:space="preserve">
     <value>No bots are defined. Did you forget to configure your ASF?</value>
   </data>
@@ -248,10 +245,6 @@ StackTrace:
     <value>Local version: {0} | Remote version: {1}</value>
     <comment>{0} will be replaced by current version, {1} will be replaced by remote version</comment>
   </data>
-  <data name="UserInputDeviceID" xml:space="preserve">
-    <value>Please enter your mobile authenticator device ID (including "android:"): </value>
-    <comment>Please note that this translation should end with space</comment>
-  </data>
   <data name="UserInputSteam2FA" xml:space="preserve">
     <value>Please enter your 2FA code from your Steam authenticator app: </value>
     <comment>Please note that this translation should end with space</comment>
@@ -271,10 +264,6 @@ StackTrace:
   <data name="UserInputSteamPassword" xml:space="preserve">
     <value>Please enter your Steam password: </value>
     <comment>Please note that this translation should end with space</comment>
-  </data>
-  <data name="UserInputUnknown" xml:space="preserve">
-    <value>Please enter undocumented value of {0}: </value>
-    <comment>{0} will be replaced by property name. Please note that this translation should end with space</comment>
   </data>
   <data name="WarningUnknownValuePleaseReport" xml:space="preserve">
     <value>Received unknown value for {0}, please report this: {1}</value>
@@ -406,9 +395,6 @@ StackTrace:
   </data>
   <data name="BotAuthenticatorImportFinished" xml:space="preserve">
     <value>Successfully finished importing mobile authenticator!</value>
-  </data>
-  <data name="BotAuthenticatorInvalidDeviceID" xml:space="preserve">
-    <value>Your DeviceID is incorrect or doesn't exist!</value>
   </data>
   <data name="BotAuthenticatorToken" xml:space="preserve">
     <value>2FA Token: {0}</value>
@@ -616,8 +602,9 @@ StackTrace:
     <value>You're using a version that is newer than latest released version for your update channel. Please note that pre-release versions are dedicated to users who know how to report bugs, deal with issues and give feedback - no technical support will be given.</value>
   </data>
   <data name="BotStats" xml:space="preserve">
-    <value>Current memory usage: {0} MB.</value>
-    <comment>{0} will be replaced by number (in megabytes) of memory being used</comment>
+    <value>Current memory usage: {0} MB.
+Process uptime: {1}</value>
+    <comment>{0} will be replaced by number (in megabytes) of memory being used, {1} will be replaced by translated TimeSpan string (such as "25 minutes"). Please note that this string should include newlines for formatting.</comment>
   </data>
   <data name="ClearingDiscoveryQueue" xml:space="preserve">
     <value>Clearing Steam discovery queue #{0}...</value>
@@ -692,5 +679,49 @@ StackTrace:
   </data>
   <data name="PluginsWarning" xml:space="preserve">
     <value>You've loaded one or more of custom plugins into the ASF. Since we're unable to offer a support for modded setups, please reach the appropriate developers of the plugins that you decided to use in case of any issues.</value>
+  </data>
+  <data name="PleaseWait" xml:space="preserve">
+    <value>Please wait...</value>
+  </data>
+  <data name="EnterCommand" xml:space="preserve">
+    <value>Enter command: </value>
+  </data>
+  <data name="Executing" xml:space="preserve">
+    <value>Executing...</value>
+  </data>
+  <data name="InteractiveConsoleEnabled" xml:space="preserve">
+    <value>Interactive console is now active, type 'c' in order to enter command mode.</value>
+  </data>
+  <data name="InteractiveConsoleNotAvailable" xml:space="preserve">
+    <value>Interactive console is not available due to missing {0} config property.</value>
+    <comment>{0} will be replaced by the name of the missing config property (string)</comment>
+  </data>
+  <data name="Response" xml:space="preserve">
+    <value>Response: {0}</value>
+    <comment>{0} will be replaced by the generated response (string)</comment>
+  </data>
+  <data name="BotGamesToRedeemInBackgroundCount" xml:space="preserve">
+    <value>Bot has {0} games remaining in its background queue.</value>
+    <comment>{0} will be replaced by remaining number of games in BGR's queue</comment>
+  </data>
+  <data name="ErrorSingleInstanceRequired" xml:space="preserve">
+    <value>ASF process is already running for this working directory, aborting!</value>
+  </data>
+  <data name="BotHandledConfirmations" xml:space="preserve">
+    <value>Successfully handled {0} confirmations!</value>
+    <comment>{0} will be replaced by number of confirmations</comment>
+  </data>
+  <data name="BotExtraIdlingCooldown" xml:space="preserve">
+    <value>Waiting up to {0} to ensure that we're free to start idling...</value>
+    <comment>{0} will be replaced by translated TimeSpan string (such as "1 minute")</comment>
+  </data>
+  <data name="UpdateCleanup" xml:space="preserve">
+    <value>Cleaning up old files after update...</value>
+  </data>
+  <data name="BotGeneratingSteamParentalCode" xml:space="preserve">
+    <value>Generating Steam parental code, this can take a while, consider putting it in the config instead...</value>
+  </data>
+  <data name="IPCConfigChanged" xml:space="preserve">
+    <value>IPC config has been changed!</value>
   </data>
 </root>

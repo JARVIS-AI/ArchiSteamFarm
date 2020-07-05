@@ -1,41 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <Authors>JustArchi</Authors>
-    <Company>JustArchi</Company>
-    <Copyright>Copyright © ArchiSteamFarm 2015-2019</Copyright>
-    <DefaultItemExcludes>$(DefaultItemExcludes);debug/**;out/**</DefaultItemExcludes>
-    <Description>ASF is an application that allows you to farm steam cards using multiple steam accounts simultaneously.</Description>
-    <ErrorReport>none</ErrorReport>
-    <LangVersion>latest</LangVersion>
-    <NoWarn />
     <OutputType>Library</OutputType>
-    <PackageIconUrl>https://github.com/JustArchiNET/ArchiSteamFarm/raw/master/resources/ASF.ico</PackageIconUrl>
-    <PackageLicenseUrl>http://www.apache.org/licenses/LICENSE-2.0</PackageLicenseUrl>
-    <PackageProjectUrl>https://github.com/JustArchiNET/ArchiSteamFarm</PackageProjectUrl>
-    <RepositoryType>Git</RepositoryType>
-    <RepositoryUrl>https://github.com/JustArchiNET/ArchiSteamFarm.git</RepositoryUrl>
-    <TargetFrameworks>netcoreapp2.2;net472</TargetFrameworks>
-    <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <DebugSymbols>false</DebugSymbols>
-    <DebugType>none</DebugType>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsAsErrors />
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ConfigureAwaitChecker.Analyzer" Version="2.0.0" />
-    <PackageReference Include="JetBrains.Annotations" Version="2018.2.1" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.0.0-preview-20181205-02" />
-    <PackageReference Include="MSTest.TestAdapter" Version="1.4.0" />
-    <PackageReference Include="MSTest.TestFramework" Version="1.4.0" />
+    <PackageReference Include="ConfigureAwaitChecker.Analyzer" Version="4.0.0">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.6.1" />
+    <PackageReference Include="MSTest.TestAdapter" Version="2.1.2" />
+    <PackageReference Include="MSTest.TestFramework" Version="2.1.2" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\ArchiSteamFarm\ArchiSteamFarm.csproj" />
   </ItemGroup>
-
 </Project>

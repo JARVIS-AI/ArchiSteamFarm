@@ -1,18 +1,18 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
 // /_/   \_\|_|   \___||_| |_||_||____/  \__|\___| \__,_||_| |_| |_||_|   \__,_||_|   |_| |_| |_|
-// 
-// Copyright 2015-2019 Łukasz "JustArchi" Domeradzki
+// |
+// Copyright 2015-2020 Łukasz "JustArchi" Domeradzki
 // Contact: JustArchi@JustArchi.net
-// 
+// |
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+// |
 // http://www.apache.org/licenses/LICENSE-2.0
-// 
+// |
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,11 +22,15 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using ArchiSteamFarm.Helpers;
 using ArchiSteamFarm.IPC;
 using ArchiSteamFarm.Localization;
 using ArchiSteamFarm.NLog;
@@ -44,13 +48,29 @@ namespace ArchiSteamFarm {
 		public static readonly ArchiLogger ArchiLogger = new ArchiLogger(SharedInfo.ASF);
 
 		[PublicAPI]
+		public static byte LoadBalancingDelay => Math.Max(GlobalConfig?.LoginLimiterDelay ?? 0, GlobalConfig.DefaultLoginLimiterDelay);
+
+		[PublicAPI]
+		public static GlobalConfig GlobalConfig { get; private set; }
+
+		[PublicAPI]
+		public static GlobalDatabase GlobalDatabase { get; private set; }
+
+		[PublicAPI]
 		public static WebBrowser WebBrowser { get; internal set; }
 
-		private static readonly ConcurrentDictionary<string, object> LastWriteEvents = new ConcurrentDictionary<string, object>();
+		internal static ICrossProcessSemaphore ConfirmationsSemaphore { get; private set; }
+		internal static ICrossProcessSemaphore GiftsSemaphore { get; private set; }
+		internal static ICrossProcessSemaphore InventorySemaphore { get; private set; }
+		internal static ICrossProcessSemaphore LoginRateLimitingSemaphore { get; private set; }
+		internal static ICrossProcessSemaphore LoginSemaphore { get; private set; }
+		internal static ImmutableDictionary<string, (ICrossProcessSemaphore RateLimitingSemaphore, SemaphoreSlim OpenConnectionsSemaphore)> WebLimitingSemaphores { get; private set; }
+
 		private static readonly SemaphoreSlim UpdateSemaphore = new SemaphoreSlim(1, 1);
 
 		private static Timer AutoUpdatesTimer;
 		private static FileSystemWatcher FileSystemWatcher;
+		private static ConcurrentDictionary<string, object> LastWriteEvents;
 
 		[PublicAPI]
 		public static bool IsOwner(ulong steamID) {
@@ -60,31 +80,119 @@ namespace ArchiSteamFarm {
 				return false;
 			}
 
-			return (steamID == Program.GlobalConfig.SteamOwnerID) || (Debugging.IsDebugBuild && (steamID == SharedInfo.ArchiSteamID));
+			return (steamID == GlobalConfig.SteamOwnerID) || (Debugging.IsDebugBuild && (steamID == SharedInfo.ArchiSteamID));
+		}
+
+		internal static string GetFilePath(EFileType fileType) {
+			if (!Enum.IsDefined(typeof(EFileType), fileType)) {
+				ArchiLogger.LogNullError(nameof(fileType));
+
+				return null;
+			}
+
+			switch (fileType) {
+				case EFileType.Config:
+					return Path.Combine(SharedInfo.ConfigDirectory, SharedInfo.GlobalConfigFileName);
+				case EFileType.Database:
+					return Path.Combine(SharedInfo.ConfigDirectory, SharedInfo.GlobalDatabaseFileName);
+				default:
+					ArchiLogger.LogGenericError(string.Format(Strings.WarningUnknownValuePleaseReport, nameof(fileType), fileType));
+
+					return null;
+			}
 		}
 
 		internal static async Task Init() {
-			WebBrowser = new WebBrowser(ArchiLogger, Program.GlobalConfig.WebProxy, true);
-
-			if (Program.GlobalConfig.IPC) {
-				await ArchiKestrel.Start().ConfigureAwait(false);
-			}
-
-			await UpdateAndRestart().ConfigureAwait(false);
-
-			if (!Core.InitPlugins()) {
+			if (!PluginsCore.InitPlugins()) {
 				await Task.Delay(10000).ConfigureAwait(false);
 			}
 
-			await Core.OnASFInitModules(Program.GlobalConfig.AdditionalProperties).ConfigureAwait(false);
+			WebBrowser = new WebBrowser(ArchiLogger, GlobalConfig.WebProxy, true);
 
-			await InitBots().ConfigureAwait(false);
+			await UpdateAndRestart().ConfigureAwait(false);
+
+			await PluginsCore.OnASFInitModules(GlobalConfig.AdditionalProperties).ConfigureAwait(false);
+
+			StringComparer botsComparer = await PluginsCore.GetBotsComparer().ConfigureAwait(false);
+
+			InitBotsComparer(botsComparer);
+
+			if (!GlobalConfig.Headless && !Console.IsInputRedirected) {
+				Logging.StartInteractiveConsole();
+			}
+
+			if (GlobalConfig.IPC) {
+				await ArchiKestrel.Start().ConfigureAwait(false);
+			}
+
+			uint changeNumberToStartFrom = await PluginsCore.GetChangeNumberToStartFrom().ConfigureAwait(false);
+
+			SteamPICSChanges.Init(changeNumberToStartFrom);
+
+			await RegisterBots().ConfigureAwait(false);
 
 			InitEvents();
 		}
 
+		internal static void InitGlobalConfig(GlobalConfig globalConfig) {
+			if (globalConfig == null) {
+				ArchiLogger.LogNullError(nameof(globalConfig));
+
+				return;
+			}
+
+			if (GlobalConfig != null) {
+				return;
+			}
+
+			GlobalConfig = globalConfig;
+
+			// The only purpose of using hashingAlgorithm below is to cut on a potential size of the resource name - paths can be really long, and we almost certainly have some upper limit on the resource name we can allocate
+			// At the same time it'd be the best if we avoided all special characters, such as '/' found e.g. in base64, as we can't be sure that it's not a prohibited character in regards to native OS implementation
+			// Because of that, MD5 is sufficient for our case, as it generates alphanumeric characters only, and is barely 128-bit long. We don't need any kind of complex cryptography or collision detection here, any hashing algorithm will do, and the shorter the better
+			string networkGroupText = "";
+
+			if (!string.IsNullOrEmpty(Program.NetworkGroup)) {
+				using MD5 hashingAlgorithm = MD5.Create();
+
+				networkGroupText = "-" + BitConverter.ToString(hashingAlgorithm.ComputeHash(Encoding.UTF8.GetBytes(Program.NetworkGroup))).Replace("-", "");
+			} else if (!string.IsNullOrEmpty(globalConfig.WebProxyText)) {
+				using MD5 hashingAlgorithm = MD5.Create();
+
+				networkGroupText = "-" + BitConverter.ToString(hashingAlgorithm.ComputeHash(Encoding.UTF8.GetBytes(globalConfig.WebProxyText))).Replace("-", "");
+			}
+
+			ConfirmationsSemaphore ??= OS.CreateCrossProcessSemaphore(nameof(ConfirmationsSemaphore) + networkGroupText);
+			GiftsSemaphore ??= OS.CreateCrossProcessSemaphore(nameof(GiftsSemaphore) + networkGroupText);
+			InventorySemaphore ??= OS.CreateCrossProcessSemaphore(nameof(InventorySemaphore) + networkGroupText);
+			LoginRateLimitingSemaphore ??= OS.CreateCrossProcessSemaphore(nameof(LoginRateLimitingSemaphore) + networkGroupText);
+			LoginSemaphore ??= OS.CreateCrossProcessSemaphore(nameof(LoginSemaphore) + networkGroupText);
+
+			WebLimitingSemaphores ??= new Dictionary<string, (ICrossProcessSemaphore RateLimitingSemaphore, SemaphoreSlim OpenConnectionsSemaphore)>(4, StringComparer.OrdinalIgnoreCase) {
+				{ nameof(ArchiWebHandler), (OS.CreateCrossProcessSemaphore(nameof(ArchiWebHandler) + networkGroupText), new SemaphoreSlim(WebBrowser.MaxConnections, WebBrowser.MaxConnections)) },
+				{ ArchiWebHandler.SteamCommunityURL, (OS.CreateCrossProcessSemaphore(nameof(ArchiWebHandler) + networkGroupText + "-" + nameof(ArchiWebHandler.SteamCommunityURL)), new SemaphoreSlim(WebBrowser.MaxConnections, WebBrowser.MaxConnections)) },
+				{ ArchiWebHandler.SteamHelpURL, (OS.CreateCrossProcessSemaphore(nameof(ArchiWebHandler) + networkGroupText + "-" + nameof(ArchiWebHandler.SteamHelpURL)), new SemaphoreSlim(WebBrowser.MaxConnections, WebBrowser.MaxConnections)) },
+				{ ArchiWebHandler.SteamStoreURL, (OS.CreateCrossProcessSemaphore(nameof(ArchiWebHandler) + networkGroupText + "-" + nameof(ArchiWebHandler.SteamStoreURL)), new SemaphoreSlim(WebBrowser.MaxConnections, WebBrowser.MaxConnections)) },
+				{ WebAPI.DefaultBaseAddress.Host, (OS.CreateCrossProcessSemaphore(nameof(ArchiWebHandler) + networkGroupText + "-" + nameof(WebAPI)), new SemaphoreSlim(WebBrowser.MaxConnections, WebBrowser.MaxConnections)) }
+			}.ToImmutableDictionary(StringComparer.OrdinalIgnoreCase);
+		}
+
+		internal static void InitGlobalDatabase(GlobalDatabase globalDatabase) {
+			if (globalDatabase == null) {
+				ArchiLogger.LogNullError(nameof(globalDatabase));
+
+				return;
+			}
+
+			if (GlobalDatabase != null) {
+				return;
+			}
+
+			GlobalDatabase = globalDatabase;
+		}
+
 		internal static async Task RestartOrExit() {
-			if (Program.RestartAllowed && Program.GlobalConfig.AutoRestart) {
+			if (Program.RestartAllowed && GlobalConfig.AutoRestart) {
 				ArchiLogger.LogGenericInfo(Strings.Restarting);
 				await Task.Delay(5000).ConfigureAwait(false);
 				await Program.Restart().ConfigureAwait(false);
@@ -97,19 +205,19 @@ namespace ArchiSteamFarm {
 
 		[ItemCanBeNull]
 		internal static async Task<Version> Update(bool updateOverride = false) {
-			if (!SharedInfo.BuildInfo.CanUpdate || (Program.GlobalConfig.UpdateChannel == GlobalConfig.EUpdateChannel.None)) {
+			if (!SharedInfo.BuildInfo.CanUpdate || (GlobalConfig.UpdateChannel == GlobalConfig.EUpdateChannel.None)) {
 				return null;
 			}
 
 			await UpdateSemaphore.WaitAsync().ConfigureAwait(false);
 
 			try {
-				ArchiLogger.LogGenericInfo(Strings.UpdateCheckingNewVersion);
-
 				// If backup directory from previous update exists, it's a good idea to purge it now
 				string backupDirectory = Path.Combine(SharedInfo.HomeDirectory, SharedInfo.UpdateDirectory);
 
 				if (Directory.Exists(backupDirectory)) {
+					ArchiLogger.LogGenericInfo(Strings.UpdateCleanup);
+
 					// It's entirely possible that old process is still running, wait a short moment for eventual cleanup
 					await Task.Delay(5000).ConfigureAwait(false);
 
@@ -120,9 +228,13 @@ namespace ArchiSteamFarm {
 
 						return null;
 					}
+
+					ArchiLogger.LogGenericInfo(Strings.Done);
 				}
 
-				GitHub.ReleaseResponse releaseResponse = await GitHub.GetLatestRelease(Program.GlobalConfig.UpdateChannel == GlobalConfig.EUpdateChannel.Stable).ConfigureAwait(false);
+				ArchiLogger.LogGenericInfo(Strings.UpdateCheckingNewVersion);
+
+				GitHub.ReleaseResponse releaseResponse = await GitHub.GetLatestRelease(GlobalConfig.UpdateChannel == GlobalConfig.EUpdateChannel.Stable).ConfigureAwait(false);
 
 				if (releaseResponse == null) {
 					ArchiLogger.LogGenericWarning(Strings.ErrorUpdateCheckFailed);
@@ -140,18 +252,16 @@ namespace ArchiSteamFarm {
 
 				ArchiLogger.LogGenericInfo(string.Format(Strings.UpdateVersionInfo, SharedInfo.Version, newVersion));
 
-				if (SharedInfo.Version == newVersion) {
-					return SharedInfo.Version;
+				if (SharedInfo.Version >= newVersion) {
+					if (SharedInfo.Version > newVersion) {
+						ArchiLogger.LogGenericWarning(Strings.WarningPreReleaseVersion);
+						await Task.Delay(15 * 1000).ConfigureAwait(false);
+					}
+
+					return newVersion;
 				}
 
-				if (SharedInfo.Version > newVersion) {
-					ArchiLogger.LogGenericWarning(Strings.WarningPreReleaseVersion);
-					await Task.Delay(15 * 1000).ConfigureAwait(false);
-
-					return SharedInfo.Version;
-				}
-
-				if (!updateOverride && (Program.GlobalConfig.UpdatePeriod == 0)) {
+				if (!updateOverride && (GlobalConfig.UpdatePeriod == 0)) {
 					ArchiLogger.LogGenericInfo(Strings.UpdateNewVersionAvailable);
 					await Task.Delay(5000).ConfigureAwait(false);
 
@@ -193,10 +303,23 @@ namespace ArchiSteamFarm {
 				}
 
 				try {
-					using (ZipArchive zipArchive = new ZipArchive(new MemoryStream(response.Content))) {
-						if (!UpdateFromArchive(zipArchive, SharedInfo.HomeDirectory)) {
-							ArchiLogger.LogGenericError(Strings.WarningFailed);
-						}
+					// We disable ArchiKestrel here as the update process moves the core files and might result in IPC crash
+					// TODO: It might fail if the update was triggered from the API, this should be something to improve in the future, by changing the structure into request -> return response -> finish update
+					await ArchiKestrel.Stop().ConfigureAwait(false);
+				} catch (Exception e) {
+					ArchiLogger.LogGenericWarningException(e);
+				}
+
+				try {
+#if !NETFRAMEWORK
+					await
+#endif
+						using MemoryStream memoryStream = new MemoryStream(response.Content);
+
+					using ZipArchive zipArchive = new ZipArchive(memoryStream);
+
+					if (!UpdateFromArchive(zipArchive, SharedInfo.HomeDirectory)) {
+						ArchiLogger.LogGenericError(Strings.WarningFailed);
 					}
 				} catch (Exception e) {
 					ArchiLogger.LogGenericException(e);
@@ -208,7 +331,7 @@ namespace ArchiSteamFarm {
 					string executable = Path.Combine(SharedInfo.HomeDirectory, SharedInfo.AssemblyName);
 
 					if (File.Exists(executable)) {
-						OS.UnixSetFileAccessExecutable(executable);
+						OS.UnixSetFileAccess(executable, OS.EUnixPermission.Combined755);
 					}
 				}
 
@@ -220,75 +343,40 @@ namespace ArchiSteamFarm {
 			}
 		}
 
-		private static async Task<bool> CanHandleWriteEvent(string name) {
-			if (string.IsNullOrEmpty(name)) {
-				ArchiLogger.LogNullError(nameof(name));
+		private static async Task<bool> CanHandleWriteEvent(string filePath) {
+			if (string.IsNullOrEmpty(filePath)) {
+				ArchiLogger.LogNullError(nameof(filePath));
 
 				return false;
 			}
 
 			// Save our event in dictionary
 			object currentWriteEvent = new object();
-			LastWriteEvents[name] = currentWriteEvent;
+			LastWriteEvents[filePath] = currentWriteEvent;
 
 			// Wait a second for eventual other events to arrive
 			await Task.Delay(1000).ConfigureAwait(false);
 
 			// We're allowed to handle this event if the one that is saved after full second is our event and we succeed in clearing it (we don't care what we're clearing anymore, it doesn't have to be atomic operation)
-			return LastWriteEvents.TryGetValue(name, out object savedWriteEvent) && (currentWriteEvent == savedWriteEvent) && LastWriteEvents.TryRemove(name, out _);
+			return LastWriteEvents.TryGetValue(filePath, out object savedWriteEvent) && (currentWriteEvent == savedWriteEvent) && LastWriteEvents.TryRemove(filePath, out _);
 		}
 
-		private static async Task InitBots() {
+		private static void InitBotsComparer(StringComparer botsComparer) {
+			if (botsComparer == null) {
+				ArchiLogger.LogNullError(nameof(botsComparer));
+
+				return;
+			}
+
 			if (Bot.Bots != null) {
 				return;
 			}
 
-			StringComparer botsComparer = await Core.GetBotsComparer().ConfigureAwait(false);
 			Bot.Init(botsComparer);
-
-			// Ensure that we ask for a list of servers if we don't have any saved servers available
-			IEnumerable<ServerRecord> servers = await Program.GlobalDatabase.ServerListProvider.FetchServerListAsync().ConfigureAwait(false);
-
-			if (servers?.Any() != true) {
-				ArchiLogger.LogGenericInfo(string.Format(Strings.Initializing, nameof(SteamDirectory)));
-
-				SteamConfiguration steamConfiguration = SteamConfiguration.Create(builder => builder.WithProtocolTypes(Program.GlobalConfig.SteamProtocols).WithCellID(Program.GlobalDatabase.CellID).WithServerListProvider(Program.GlobalDatabase.ServerListProvider).WithHttpClientFactory(() => WebBrowser.GenerateDisposableHttpClient()));
-
-				try {
-					await SteamDirectory.LoadAsync(steamConfiguration).ConfigureAwait(false);
-					ArchiLogger.LogGenericInfo(Strings.Success);
-				} catch {
-					ArchiLogger.LogGenericWarning(Strings.BotSteamDirectoryInitializationFailed);
-					await Task.Delay(5000).ConfigureAwait(false);
-				}
-			}
-
-			HashSet<string> botNames;
-
-			try {
-				botNames = Directory.EnumerateFiles(SharedInfo.ConfigDirectory, "*" + SharedInfo.ConfigExtension).Select(Path.GetFileNameWithoutExtension).Where(botName => !string.IsNullOrEmpty(botName) && IsValidBotName(botName)).ToHashSet(botsComparer);
-			} catch (Exception e) {
-				ArchiLogger.LogGenericException(e);
-
-				return;
-			}
-
-			if (botNames.Count == 0) {
-				ArchiLogger.LogGenericWarning(Strings.ErrorNoBotsDefined);
-
-				return;
-			}
-
-			if (botNames.Count > MaximumRecommendedBotsCount) {
-				ArchiLogger.LogGenericWarning(string.Format(Strings.WarningExcessiveBotsCount, MaximumRecommendedBotsCount));
-				await Task.Delay(10000).ConfigureAwait(false);
-			}
-
-			await Utilities.InParallel(botNames.OrderBy(botName => botName).Select(Bot.RegisterBot)).ConfigureAwait(false);
 		}
 
 		private static void InitEvents() {
-			if (FileSystemWatcher != null) {
+			if ((FileSystemWatcher != null) || (LastWriteEvents != null) || !Directory.Exists(SharedInfo.ConfigDirectory)) {
 				return;
 			}
 
@@ -298,6 +386,8 @@ namespace ArchiSteamFarm {
 			FileSystemWatcher.Created += OnCreated;
 			FileSystemWatcher.Deleted += OnDeleted;
 			FileSystemWatcher.Renamed += OnRenamed;
+
+			LastWriteEvents = new ConcurrentDictionary<string, object>(Bot.BotsComparer);
 
 			FileSystemWatcher.EnableRaisingEvents = true;
 		}
@@ -313,14 +403,7 @@ namespace ArchiSteamFarm {
 				return false;
 			}
 
-			switch (botName) {
-				case SharedInfo.ASF:
-
-					return false;
-				default:
-
-					return true;
-			}
+			return !botName.Equals(SharedInfo.ASF, StringComparison.OrdinalIgnoreCase);
 		}
 
 		private static async void OnChanged(object sender, FileSystemEventArgs e) {
@@ -343,11 +426,32 @@ namespace ArchiSteamFarm {
 			await OnCreatedConfigFile(name, fullPath).ConfigureAwait(false);
 		}
 
+		private static async Task OnChangedConfigFile(string name) {
+			if (string.IsNullOrEmpty(name)) {
+				ArchiLogger.LogNullError(nameof(name));
+
+				return;
+			}
+
+			if (!name.Equals(SharedInfo.IPCConfigFile) || (GlobalConfig?.IPC != true)) {
+				return;
+			}
+
+			if (!await CanHandleWriteEvent(name).ConfigureAwait(false)) {
+				return;
+			}
+
+			ArchiLogger.LogGenericInfo(Strings.IPCConfigChanged);
+			await ArchiKestrel.Stop().ConfigureAwait(false);
+			await ArchiKestrel.Start().ConfigureAwait(false);
+		}
+
 		private static async Task OnChangedFile(string name, string fullPath) {
 			string extension = Path.GetExtension(name);
 
 			switch (extension) {
-				case SharedInfo.ConfigExtension:
+				case SharedInfo.JsonConfigExtension:
+				case SharedInfo.IPCConfigExtension:
 					await OnChangedConfigFile(name, fullPath).ConfigureAwait(false);
 
 					break;
@@ -385,17 +489,60 @@ namespace ArchiSteamFarm {
 				return;
 			}
 
+			string extension = Path.GetExtension(name);
+
+			switch (extension) {
+				case SharedInfo.IPCConfigExtension:
+					await OnChangedConfigFile(name).ConfigureAwait(false);
+
+					break;
+				case SharedInfo.JsonConfigExtension:
+					await OnCreatedJsonFile(name, fullPath).ConfigureAwait(false);
+
+					break;
+			}
+		}
+
+		private static async Task OnCreatedFile(string name, string fullPath) {
+			if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(fullPath)) {
+				ArchiLogger.LogNullError(nameof(name) + " || " + nameof(fullPath));
+
+				return;
+			}
+
+			string extension = Path.GetExtension(name);
+
+			switch (extension) {
+				case SharedInfo.JsonConfigExtension:
+					await OnCreatedConfigFile(name, fullPath).ConfigureAwait(false);
+
+					break;
+
+				case SharedInfo.KeysExtension:
+					await OnCreatedKeysFile(name, fullPath).ConfigureAwait(false);
+
+					break;
+			}
+		}
+
+		private static async Task OnCreatedJsonFile(string name, string fullPath) {
+			if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(fullPath)) {
+				ArchiLogger.LogNullError(nameof(name) + " || " + nameof(fullPath));
+
+				return;
+			}
+
 			string botName = Path.GetFileNameWithoutExtension(name);
 
 			if (string.IsNullOrEmpty(botName) || (botName[0] == '.')) {
 				return;
 			}
 
-			if (!await CanHandleWriteEvent(name).ConfigureAwait(false)) {
+			if (!await CanHandleWriteEvent(fullPath).ConfigureAwait(false)) {
 				return;
 			}
 
-			if (botName.Equals(SharedInfo.ASF)) {
+			if (botName.Equals(SharedInfo.ASF, StringComparison.OrdinalIgnoreCase)) {
 				ArchiLogger.LogGenericInfo(Strings.GlobalConfigChanged);
 				await RestartOrExit().ConfigureAwait(false);
 
@@ -417,27 +564,6 @@ namespace ArchiSteamFarm {
 			}
 		}
 
-		private static async Task OnCreatedFile(string name, string fullPath) {
-			if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(fullPath)) {
-				ArchiLogger.LogNullError(nameof(name) + " || " + nameof(fullPath));
-
-				return;
-			}
-
-			string extension = Path.GetExtension(name);
-
-			switch (extension) {
-				case SharedInfo.ConfigExtension:
-					await OnCreatedConfigFile(name, fullPath).ConfigureAwait(false);
-
-					break;
-				case SharedInfo.KeysExtension:
-					await OnCreatedKeysFile(name, fullPath).ConfigureAwait(false);
-
-					break;
-			}
-		}
-
 		private static async Task OnCreatedKeysFile(string name, string fullPath) {
 			if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(fullPath)) {
 				ArchiLogger.LogNullError(nameof(name) + " || " + nameof(fullPath));
@@ -451,7 +577,7 @@ namespace ArchiSteamFarm {
 				return;
 			}
 
-			if (!await CanHandleWriteEvent(name).ConfigureAwait(false)) {
+			if (!await CanHandleWriteEvent(fullPath).ConfigureAwait(false)) {
 				return;
 			}
 
@@ -479,17 +605,56 @@ namespace ArchiSteamFarm {
 				return;
 			}
 
+			string extension = Path.GetExtension(name);
+
+			switch (extension) {
+				case SharedInfo.IPCConfigExtension:
+					await OnChangedConfigFile(name).ConfigureAwait(false);
+
+					break;
+				case SharedInfo.JsonConfigExtension:
+					await OnDeletedJsonConfigFile(name, fullPath).ConfigureAwait(false);
+
+					break;
+			}
+		}
+
+		private static async Task OnDeletedFile(string name, string fullPath) {
+			if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(fullPath)) {
+				ArchiLogger.LogNullError(nameof(name) + " || " + nameof(fullPath));
+
+				return;
+			}
+
+			string extension = Path.GetExtension(name);
+
+			switch (extension) {
+				case SharedInfo.JsonConfigExtension:
+				case SharedInfo.IPCConfigExtension:
+					await OnDeletedConfigFile(name, fullPath).ConfigureAwait(false);
+
+					break;
+			}
+		}
+
+		private static async Task OnDeletedJsonConfigFile(string name, string fullPath) {
+			if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(fullPath)) {
+				ArchiLogger.LogNullError(nameof(name) + " || " + nameof(fullPath));
+
+				return;
+			}
+
 			string botName = Path.GetFileNameWithoutExtension(name);
 
 			if (string.IsNullOrEmpty(botName)) {
 				return;
 			}
 
-			if (!await CanHandleWriteEvent(name).ConfigureAwait(false)) {
+			if (!await CanHandleWriteEvent(fullPath).ConfigureAwait(false)) {
 				return;
 			}
 
-			if (botName.Equals(SharedInfo.ASF)) {
+			if (botName.Equals(SharedInfo.ASF, StringComparison.OrdinalIgnoreCase)) {
 				if (File.Exists(fullPath)) {
 					return;
 				}
@@ -517,23 +682,6 @@ namespace ArchiSteamFarm {
 			}
 		}
 
-		private static async Task OnDeletedFile(string name, string fullPath) {
-			if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(fullPath)) {
-				ArchiLogger.LogNullError(nameof(name) + " || " + nameof(fullPath));
-
-				return;
-			}
-
-			string extension = Path.GetExtension(name);
-
-			switch (extension) {
-				case SharedInfo.ConfigExtension:
-					await OnDeletedConfigFile(name, fullPath).ConfigureAwait(false);
-
-					break;
-			}
-		}
-
 		private static async void OnRenamed(object sender, RenamedEventArgs e) {
 			if ((sender == null) || (e == null)) {
 				ArchiLogger.LogNullError(nameof(sender) + " || " + nameof(e));
@@ -545,13 +693,61 @@ namespace ArchiSteamFarm {
 			await OnCreatedFile(e.Name, e.FullPath).ConfigureAwait(false);
 		}
 
-		private static async Task UpdateAndRestart() {
-			if (!SharedInfo.BuildInfo.CanUpdate || (Program.GlobalConfig.UpdateChannel == GlobalConfig.EUpdateChannel.None)) {
+		private static async Task RegisterBots() {
+			if (Bot.Bots.Count > 0) {
 				return;
 			}
 
-			if ((AutoUpdatesTimer == null) && (Program.GlobalConfig.UpdatePeriod > 0)) {
-				TimeSpan autoUpdatePeriod = TimeSpan.FromHours(Program.GlobalConfig.UpdatePeriod);
+			// Ensure that we ask for a list of servers if we don't have any saved servers available
+			IEnumerable<ServerRecord> servers = await GlobalDatabase.ServerListProvider.FetchServerListAsync().ConfigureAwait(false);
+
+			if (servers?.Any() != true) {
+				ArchiLogger.LogGenericInfo(string.Format(Strings.Initializing, nameof(SteamDirectory)));
+
+				SteamConfiguration steamConfiguration = SteamConfiguration.Create(builder => builder.WithProtocolTypes(GlobalConfig.SteamProtocols).WithCellID(GlobalDatabase.CellID).WithServerListProvider(GlobalDatabase.ServerListProvider).WithHttpClientFactory(() => WebBrowser.GenerateDisposableHttpClient()));
+
+				try {
+					await SteamDirectory.LoadAsync(steamConfiguration).ConfigureAwait(false);
+					ArchiLogger.LogGenericInfo(Strings.Success);
+				} catch (Exception e) {
+					ArchiLogger.LogGenericWarningException(e);
+					ArchiLogger.LogGenericWarning(Strings.BotSteamDirectoryInitializationFailed);
+
+					await Task.Delay(5000).ConfigureAwait(false);
+				}
+			}
+
+			HashSet<string> botNames;
+
+			try {
+				botNames = Directory.Exists(SharedInfo.ConfigDirectory) ? Directory.EnumerateFiles(SharedInfo.ConfigDirectory, "*" + SharedInfo.JsonConfigExtension).Select(Path.GetFileNameWithoutExtension).Where(botName => !string.IsNullOrEmpty(botName) && IsValidBotName(botName)).ToHashSet(Bot.BotsComparer) : new HashSet<string>(0);
+			} catch (Exception e) {
+				ArchiLogger.LogGenericException(e);
+
+				return;
+			}
+
+			if (botNames.Count == 0) {
+				ArchiLogger.LogGenericWarning(Strings.ErrorNoBotsDefined);
+
+				return;
+			}
+
+			if (botNames.Count > MaximumRecommendedBotsCount) {
+				ArchiLogger.LogGenericWarning(string.Format(Strings.WarningExcessiveBotsCount, MaximumRecommendedBotsCount));
+				await Task.Delay(10000).ConfigureAwait(false);
+			}
+
+			await Utilities.InParallel(botNames.OrderBy(botName => botName, Bot.BotsComparer).Select(Bot.RegisterBot)).ConfigureAwait(false);
+		}
+
+		private static async Task UpdateAndRestart() {
+			if (!SharedInfo.BuildInfo.CanUpdate || (GlobalConfig.UpdateChannel == GlobalConfig.EUpdateChannel.None)) {
+				return;
+			}
+
+			if ((AutoUpdatesTimer == null) && (GlobalConfig.UpdatePeriod > 0)) {
+				TimeSpan autoUpdatePeriod = TimeSpan.FromHours(GlobalConfig.UpdatePeriod);
 
 				AutoUpdatesTimer = new Timer(
 					async e => await UpdateAndRestart().ConfigureAwait(false),
@@ -582,8 +778,7 @@ namespace ArchiSteamFarm {
 			// Firstly we'll move all our existing files to a backup directory
 			string backupDirectory = Path.Combine(targetDirectory, SharedInfo.UpdateDirectory);
 
-			// We can't use EnumerateFiles here as we're going to actively move them
-			foreach (string file in Directory.GetFiles(targetDirectory, "*", SearchOption.AllDirectories)) {
+			foreach (string file in Directory.EnumerateFiles(targetDirectory, "*", SearchOption.AllDirectories)) {
 				string fileName = Path.GetFileName(file);
 
 				if (string.IsNullOrEmpty(fileName)) {
@@ -603,38 +798,48 @@ namespace ArchiSteamFarm {
 				string relativeDirectoryName = Path.GetDirectoryName(relativeFilePath);
 
 				switch (relativeDirectoryName) {
-					// Files in those directories we want to keep in their current place
-					case SharedInfo.ConfigDirectory:
-					case SharedInfo.PluginsDirectory:
-
-						continue;
-					case "":
-
-						switch (fileName) {
-							// Files with those names in root directory we want to keep
-							case SharedInfo.LogFile:
-							case "NLog.config":
-
-								continue;
-						}
-
-						break;
 					case null:
 						ArchiLogger.LogNullError(nameof(relativeDirectoryName));
 
 						return false;
+					case "":
+						// No directory, root folder
+						switch (fileName) {
+							case Logging.NLogConfigurationFile:
+							case SharedInfo.LogFile:
+								// Files with those names in root directory we want to keep
+								continue;
+						}
+
+						break;
+					case SharedInfo.ArchivalLogsDirectory:
+					case SharedInfo.ConfigDirectory:
+					case SharedInfo.DebugDirectory:
+					case SharedInfo.PluginsDirectory:
+					case SharedInfo.UpdateDirectory:
+						// Files in those directories we want to keep in their current place
+						continue;
+					default:
+						// Files in subdirectories of those directories we want to keep as well
+						if (Utilities.RelativeDirectoryStartsWith(relativeDirectoryName, SharedInfo.ArchivalLogsDirectory, SharedInfo.ConfigDirectory, SharedInfo.DebugDirectory, SharedInfo.PluginsDirectory, SharedInfo.UpdateDirectory)) {
+							continue;
+						}
+
+						break;
 				}
 
 				string targetBackupDirectory = relativeDirectoryName.Length > 0 ? Path.Combine(backupDirectory, relativeDirectoryName) : backupDirectory;
 				Directory.CreateDirectory(targetBackupDirectory);
 
 				string targetBackupFile = Path.Combine(targetBackupDirectory, fileName);
-				File.Move(file, targetBackupFile);
+				RuntimeCompatibility.File.Move(file, targetBackupFile, true);
 			}
 
 			// We can now get rid of directories that are empty
-			foreach (string directory in Directory.EnumerateDirectories(targetDirectory).Where(directory => !Directory.EnumerateFiles(directory).Any())) {
-				Directory.Delete(directory, true);
+			Utilities.DeleteEmptyDirectoriesRecursively(targetDirectory);
+
+			if (!Directory.Exists(targetDirectory)) {
+				Directory.CreateDirectory(targetDirectory);
 			}
 
 			// Now enumerate over files in the zip archive, skip directory entries that we're not interested in (we can create them ourselves if needed)
@@ -643,27 +848,29 @@ namespace ArchiSteamFarm {
 
 				if (File.Exists(file)) {
 					// This is possible only with files that we decided to leave in place during our backup function
-					// Those files should never be overwritten with anything, ignore
-					continue;
+					string targetBackupFile = file + ".bak";
+					RuntimeCompatibility.File.Move(file, targetBackupFile, true);
 				}
 
-				string directory = Path.GetDirectoryName(file);
+				// Check if this file requires its own folder
+				if (zipFile.Name != zipFile.FullName) {
+					string directory = Path.GetDirectoryName(file);
 
-				if (string.IsNullOrEmpty(directory)) {
-					ArchiLogger.LogNullError(nameof(directory));
+					if (string.IsNullOrEmpty(directory)) {
+						ArchiLogger.LogNullError(nameof(directory));
 
-					return false;
-				}
+						return false;
+					}
 
-				if (!Directory.Exists(directory)) {
-					Directory.CreateDirectory(directory);
-				}
+					if (!Directory.Exists(directory)) {
+						Directory.CreateDirectory(directory);
+					}
 
-				// We're not interested in extracting placeholder files (but we still want directories created for them, done above)
-				switch (zipFile.Name) {
-					case ".gitkeep":
-
-						continue;
+					// We're not interested in extracting placeholder files (but we still want directories created for them, done above)
+					switch (zipFile.Name) {
+						case ".gitkeep":
+							continue;
+					}
 				}
 
 				zipFile.ExtractToFile(file);
@@ -672,14 +879,19 @@ namespace ArchiSteamFarm {
 			return true;
 		}
 
-		internal enum EUserInputType : byte {
-			Unknown,
-			DeviceID,
+		[PublicAPI]
+		public enum EUserInputType : byte {
+			None,
 			Login,
 			Password,
 			SteamGuard,
 			SteamParentalCode,
 			TwoFactorAuthentication
+		}
+
+		internal enum EFileType : byte {
+			Config,
+			Database
 		}
 	}
 }

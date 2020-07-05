@@ -159,9 +159,6 @@
     <value>{0} невірний!</value>
     <comment>{0} will be replaced by object's name</comment>
   </data>
-  <data name="ErrorMobileAuthenticatorInvalidDeviceID" xml:space="preserve">
-    <value>Відмова запуску цієї функції через невірний Device ID в ASF 2FA!</value>
-  </data>
   <data name="ErrorNoBotsDefined" xml:space="preserve">
     <value>Не знайдено жодного боту. Ви забули налаштувати ASF?</value>
   </data>
@@ -248,10 +245,6 @@
     <value>Ваша версія: {0} |Остання версія: {1}</value>
     <comment>{0} will be replaced by current version, {1} will be replaced by remote version</comment>
   </data>
-  <data name="UserInputDeviceID" xml:space="preserve">
-    <value>Будь ласка, введіть Device ID вашого автентифікатора (включаючи "android:"): </value>
-    <comment>Please note that this translation should end with space</comment>
-  </data>
   <data name="UserInputSteam2FA" xml:space="preserve">
     <value>Будь ласка, введіть ваш код 2FA з додатку для автентифікації у Steam: </value>
     <comment>Please note that this translation should end with space</comment>
@@ -271,10 +264,6 @@
   <data name="UserInputSteamPassword" xml:space="preserve">
     <value>Будь ласка, введіть ваш Steam пароль: </value>
     <comment>Please note that this translation should end with space</comment>
-  </data>
-  <data name="UserInputUnknown" xml:space="preserve">
-    <value>Будь ласка, введіть недокументоване значення {0}: </value>
-    <comment>{0} will be replaced by property name. Please note that this translation should end with space</comment>
   </data>
   <data name="WarningUnknownValuePleaseReport" xml:space="preserve">
     <value>Отримано невідоме значення для {0}, будь ласка, повідомте про це: {1}</value>
@@ -407,9 +396,6 @@
   <data name="BotAuthenticatorImportFinished" xml:space="preserve">
     <value>Імпортування мобільного автентифікатора завершено успішно!</value>
   </data>
-  <data name="BotAuthenticatorInvalidDeviceID" xml:space="preserve">
-    <value>Ваш DeviceID некоректний або не існує!</value>
-  </data>
   <data name="BotAuthenticatorToken" xml:space="preserve">
     <value>2FA токен: {0}</value>
     <comment>{0} will be replaced by generated 2FA token (string)</comment>
@@ -443,7 +429,7 @@
     <value>Цей бот не запущений, тому що він відключений у конфігураційному файлі!</value>
   </data>
   <data name="BotInvalidAuthenticatorDuringLogin" xml:space="preserve">
-    <value>Помилку TwoFactorCodeMismatch отримано {0} разів поспіль. Або ваші дані 2FA більше не є дійсні, або час на вашому пристрої не синхронізований, припиняємо роботу!</value>
+    <value>Помилка TwoFactorCodeMismatch виникла {0} разів поспіль. Дані 2FA більше не дійсні, або час на вашому пристрої не синхронізований, припиняю роботу!</value>
     <comment>{0} will be replaced by maximum allowed number of failed 2FA attempts</comment>
   </data>
   <data name="BotLoggedOff" xml:space="preserve">
@@ -613,12 +599,9 @@
     <value>Доступ заборонено!</value>
   </data>
   <data name="WarningPreReleaseVersion" xml:space="preserve">
-    <value>Ви користуєтеся версією, яка новіша за останню версію у цьому каналі оновлення. Будь ласка, зверніть увагу, що пре-релізні версіі призначені для користувачів які вміють доповідати про помилки, вирішувати питання та надавати зворотній зв'язок - технічна підтримка не надається.</value>
+    <value>Ви користуєтеся версією, яка новіша за останню версію у цьому каналі оновлення. Будь ласка, зверніть увагу, що підготовчі версії призначені для користувачів які вміють доповідати про помилки, вирішувати питання та надавати зворотній зв'язок - технічна підтримка не надається.</value>
   </data>
-  <data name="BotStats" xml:space="preserve">
-    <value>Поточне використання пам'яті: {0} МБ.</value>
-    <comment>{0} will be replaced by number (in megabytes) of memory being used</comment>
-  </data>
+  
   <data name="ClearingDiscoveryQueue" xml:space="preserve">
     <value>Очищення черги знахідок Steam №{0}...</value>
     <comment>{0} will be replaced by queue number</comment>
@@ -692,5 +675,49 @@
   </data>
   <data name="PluginsWarning" xml:space="preserve">
     <value>Ви завантажили до ASF один чи більше плаґінів. Оскільки ми не в змозі надавати підтримку для модифікованих конфігурацій, будь ласка у разі якихось проблем звертайтеся до розробників відповідного плаґіну.</value>
+  </data>
+  <data name="PleaseWait" xml:space="preserve">
+    <value>Будь ласка, зачекайте...</value>
+  </data>
+  <data name="EnterCommand" xml:space="preserve">
+    <value>Введіть команду: </value>
+  </data>
+  <data name="Executing" xml:space="preserve">
+    <value>Виконання...</value>
+  </data>
+  <data name="InteractiveConsoleEnabled" xml:space="preserve">
+    <value>Інтерактивну консоль активовано, натисніть 'c' щоб перейти до режиму команд.</value>
+  </data>
+  <data name="InteractiveConsoleNotAvailable" xml:space="preserve">
+    <value>Інтерактивну консоль не активовано через відсутність параметру конфігурації {0}.</value>
+    <comment>{0} will be replaced by the name of the missing config property (string)</comment>
+  </data>
+  <data name="Response" xml:space="preserve">
+    <value>Відповідь: {0}</value>
+    <comment>{0} will be replaced by the generated response (string)</comment>
+  </data>
+  <data name="BotGamesToRedeemInBackgroundCount" xml:space="preserve">
+    <value>Бот має {0} ігор у фоновій черзі.</value>
+    <comment>{0} will be replaced by remaining number of games in BGR's queue</comment>
+  </data>
+  <data name="ErrorSingleInstanceRequired" xml:space="preserve">
+    <value>Процес ASF вже працює для цього робочого каталогу, завершуємо роботу!</value>
+  </data>
+  <data name="BotHandledConfirmations" xml:space="preserve">
+    <value>Успішно оброблено {0} підтверджень!</value>
+    <comment>{0} will be replaced by number of confirmations</comment>
+  </data>
+  <data name="BotExtraIdlingCooldown" xml:space="preserve">
+    <value>Затримка {0}, щоб гарантувати, що акаунт вільний для фарму...</value>
+    <comment>{0} will be replaced by translated TimeSpan string (such as "1 minute")</comment>
+  </data>
+  <data name="UpdateCleanup" xml:space="preserve">
+    <value>Видалення старих файлів після оновлення...</value>
+  </data>
+  <data name="BotGeneratingSteamParentalCode" xml:space="preserve">
+    <value>Генерація коду батьківського контролю Steam, зважте можливість вказати його у конфігураційному файлі замість цього...</value>
+  </data>
+  <data name="IPCConfigChanged" xml:space="preserve">
+    <value>Конфігурацію IPC було змінено!</value>
   </data>
 </root>

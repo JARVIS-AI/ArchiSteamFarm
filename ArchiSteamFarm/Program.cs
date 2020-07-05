@@ -1,18 +1,18 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
 // /_/   \_\|_|   \___||_| |_||_||____/  \__|\___| \__,_||_| |_| |_||_|   \__,_||_|   |_| |_| |_|
-// 
-// Copyright 2015-2019 Łukasz "JustArchi" Domeradzki
+// |
+// Copyright 2015-2020 Łukasz "JustArchi" Domeradzki
 // Contact: JustArchi@JustArchi.net
-// 
+// |
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+// |
 // http://www.apache.org/licenses/LICENSE-2.0
-// 
+// |
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -38,21 +38,12 @@ using SteamKit2;
 
 namespace ArchiSteamFarm {
 	internal static class Program {
-		internal static byte LoadBalancingDelay => Math.Max(GlobalConfig?.LoginLimiterDelay ?? 0, (byte) 10);
-
-		internal static GlobalConfig GlobalConfig { get; private set; }
-		internal static GlobalDatabase GlobalDatabase { get; private set; }
+		internal static string NetworkGroup { get; private set; }
 		internal static bool ProcessRequired { get; private set; }
 		internal static bool RestartAllowed { get; private set; } = true;
-
-		private static readonly object ConsoleLock = new object();
-
-		// We need to keep this one assigned and not calculated on-demand
-		private static readonly string ProcessFileName = Process.GetCurrentProcess().MainModule.FileName;
+		internal static bool ShutdownSequenceInitialized { get; private set; }
 
 		private static readonly TaskCompletionSource<byte> ShutdownResetEvent = new TaskCompletionSource<byte>();
-
-		private static bool ShutdownSequenceInitialized;
 		private static bool SystemRequired;
 
 		internal static async Task Exit(byte exitCode = 0) {
@@ -64,84 +55,12 @@ namespace ArchiSteamFarm {
 			Environment.Exit(exitCode);
 		}
 
-		internal static string GetUserInput(ASF.EUserInputType userInputType, string botName = SharedInfo.ASF) {
-			if (userInputType == ASF.EUserInputType.Unknown) {
-				return null;
-			}
-
-			if (GlobalConfig.Headless) {
-				ASF.ArchiLogger.LogGenericWarning(Strings.ErrorUserInputRunningInHeadlessMode);
-
-				return null;
-			}
-
-			string result;
-
-			lock (ConsoleLock) {
-				Logging.OnUserInputStart();
-
-				try {
-					switch (userInputType) {
-						case ASF.EUserInputType.DeviceID:
-							Console.Write(Bot.FormatBotResponse(Strings.UserInputDeviceID, botName));
-							result = Console.ReadLine();
-
-							break;
-						case ASF.EUserInputType.Login:
-							Console.Write(Bot.FormatBotResponse(Strings.UserInputSteamLogin, botName));
-							result = Console.ReadLine();
-
-							break;
-						case ASF.EUserInputType.Password:
-							Console.Write(Bot.FormatBotResponse(Strings.UserInputSteamPassword, botName));
-							result = Utilities.ReadLineMasked();
-
-							break;
-						case ASF.EUserInputType.SteamGuard:
-							Console.Write(Bot.FormatBotResponse(Strings.UserInputSteamGuard, botName));
-							result = Console.ReadLine();
-
-							break;
-						case ASF.EUserInputType.SteamParentalCode:
-							Console.Write(Bot.FormatBotResponse(Strings.UserInputSteamParentalCode, botName));
-							result = Utilities.ReadLineMasked();
-
-							break;
-						case ASF.EUserInputType.TwoFactorAuthentication:
-							Console.Write(Bot.FormatBotResponse(Strings.UserInputSteam2FA, botName));
-							result = Console.ReadLine();
-
-							break;
-						default:
-							ASF.ArchiLogger.LogGenericError(string.Format(Strings.WarningUnknownValuePleaseReport, nameof(userInputType), userInputType));
-							Console.Write(Bot.FormatBotResponse(string.Format(Strings.UserInputUnknown, userInputType), botName));
-							result = Console.ReadLine();
-
-							break;
-					}
-
-					if (!Console.IsOutputRedirected) {
-						Console.Clear(); // For security purposes
-					}
-				} catch (Exception e) {
-					Logging.OnUserInputEnd();
-					ASF.ArchiLogger.LogGenericException(e);
-
-					return null;
-				}
-
-				Logging.OnUserInputEnd();
-			}
-
-			return !string.IsNullOrEmpty(result) ? result.Trim() : null;
-		}
-
 		internal static async Task Restart() {
 			if (!await InitShutdownSequence().ConfigureAwait(false)) {
 				return;
 			}
 
-			string executableName = Path.GetFileNameWithoutExtension(ProcessFileName);
+			string executableName = Path.GetFileNameWithoutExtension(OS.ProcessFileName);
 
 			if (string.IsNullOrEmpty(executableName)) {
 				ASF.ArchiLogger.LogNullError(nameof(executableName));
@@ -152,7 +71,7 @@ namespace ArchiSteamFarm {
 			IEnumerable<string> arguments = Environment.GetCommandLineArgs().Skip(executableName.Equals(SharedInfo.AssemblyName) ? 1 : 0);
 
 			try {
-				Process.Start(ProcessFileName, string.Join(" ", arguments));
+				Process.Start(OS.ProcessFileName, string.Join(" ", arguments));
 			} catch (Exception e) {
 				ASF.ArchiLogger.LogGenericException(e);
 			}
@@ -172,6 +91,16 @@ namespace ArchiSteamFarm {
 			}
 
 			ArchiCryptoHelper.SetEncryptionKey(cryptKey);
+		}
+
+		private static void HandleNetworkGroupArgument(string networkGroup) {
+			if (string.IsNullOrEmpty(networkGroup)) {
+				ASF.ArchiLogger.LogNullError(nameof(networkGroup));
+
+				return;
+			}
+
+			NetworkGroup = networkGroup;
 		}
 
 		private static void HandlePathArgument(string path) {
@@ -197,12 +126,20 @@ namespace ArchiSteamFarm {
 			Target.Register<HistoryTarget>(HistoryTarget.TargetName);
 			Target.Register<SteamTarget>(SteamTarget.TargetName);
 
-			InitCore(args);
+			if (!await InitCore(args).ConfigureAwait(false)) {
+				await Exit(1).ConfigureAwait(false);
+
+				return;
+			}
+
 			await InitASF(args).ConfigureAwait(false);
 		}
 
 		private static async Task InitASF(IReadOnlyCollection<string> args) {
-			ASF.ArchiLogger.LogGenericInfo(SharedInfo.PublicIdentifier + " V" + SharedInfo.Version + " (" + SharedInfo.BuildInfo.Variant + "/" + SharedInfo.ModuleVersion + " | " + OS.Variant + ")");
+			OS.CoreInit();
+
+			Console.Title = SharedInfo.ProgramIdentifier;
+			ASF.ArchiLogger.LogGenericInfo(SharedInfo.ProgramIdentifier);
 
 			await InitGlobalConfigAndLanguage().ConfigureAwait(false);
 
@@ -211,13 +148,13 @@ namespace ArchiSteamFarm {
 				ParsePostInitArgs(args);
 			}
 
-			OS.Init(SystemRequired, GlobalConfig.OptimizationMode);
+			OS.Init(SystemRequired, ASF.GlobalConfig.OptimizationMode);
 
 			await InitGlobalDatabaseAndServices().ConfigureAwait(false);
 			await ASF.Init().ConfigureAwait(false);
 		}
 
-		private static void InitCore(IReadOnlyCollection<string> args) {
+		private static async Task<bool> InitCore(IReadOnlyCollection<string> args) {
 			Directory.SetCurrentDirectory(SharedInfo.HomeDirectory);
 
 			// Allow loading configs from source tree if it's a debug build
@@ -242,16 +179,34 @@ namespace ArchiSteamFarm {
 				ParsePreInitArgs(args);
 			}
 
-			Logging.InitCoreLoggers();
+			bool uniqueInstance = OS.RegisterProcess();
+			Logging.InitCoreLoggers(uniqueInstance);
+
+			if (!uniqueInstance) {
+				ASF.ArchiLogger.LogGenericError(Strings.ErrorSingleInstanceRequired);
+				await Task.Delay(5000).ConfigureAwait(false);
+
+				return false;
+			}
+
+			return true;
 		}
 
 		private static async Task InitGlobalConfigAndLanguage() {
-			string globalConfigFile = Path.Combine(SharedInfo.ConfigDirectory, SharedInfo.GlobalConfigFileName);
+			string globalConfigFile = ASF.GetFilePath(ASF.EFileType.Config);
+
+			if (string.IsNullOrEmpty(globalConfigFile)) {
+				ASF.ArchiLogger.LogNullError(nameof(globalConfigFile));
+
+				return;
+			}
+
+			GlobalConfig globalConfig;
 
 			if (File.Exists(globalConfigFile)) {
-				GlobalConfig = await GlobalConfig.Load(globalConfigFile).ConfigureAwait(false);
+				globalConfig = await GlobalConfig.Load(globalConfigFile).ConfigureAwait(false);
 
-				if (GlobalConfig == null) {
+				if (globalConfig == null) {
 					ASF.ArchiLogger.LogGenericError(string.Format(Strings.ErrorGlobalConfigNotLoaded, globalConfigFile));
 					await Task.Delay(5 * 1000).ConfigureAwait(false);
 					await Exit(1).ConfigureAwait(false);
@@ -259,27 +214,35 @@ namespace ArchiSteamFarm {
 					return;
 				}
 			} else {
-				GlobalConfig = GlobalConfig.Create();
+				globalConfig = new GlobalConfig();
 			}
 
-			if (Debugging.IsUserDebugging) {
-				ASF.ArchiLogger.LogGenericDebug(SharedInfo.GlobalConfigFileName + ": " + JsonConvert.SerializeObject(GlobalConfig, Formatting.Indented));
+			ASF.InitGlobalConfig(globalConfig);
+
+			if (Debugging.IsDebugConfigured) {
+				ASF.ArchiLogger.LogGenericDebug(globalConfigFile + ": " + JsonConvert.SerializeObject(ASF.GlobalConfig, Formatting.Indented));
 			}
 
-			if (!string.IsNullOrEmpty(GlobalConfig.CurrentCulture)) {
+			if (!string.IsNullOrEmpty(ASF.GlobalConfig.CurrentCulture)) {
 				try {
 					// GetCultureInfo() would be better but we can't use it for specifying neutral cultures such as "en"
-					CultureInfo culture = CultureInfo.CreateSpecificCulture(GlobalConfig.CurrentCulture);
+					CultureInfo culture = CultureInfo.CreateSpecificCulture(ASF.GlobalConfig.CurrentCulture);
 					CultureInfo.DefaultThreadCurrentCulture = CultureInfo.DefaultThreadCurrentUICulture = culture;
-				} catch (Exception) {
+				} catch (Exception e) {
+					ASF.ArchiLogger.LogGenericWarningException(e);
+
 					ASF.ArchiLogger.LogGenericError(Strings.ErrorInvalidCurrentCulture);
 				}
 			}
 
-			if (CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("en")) {
-				return;
+			// Skip translation progress for English and invariant (such as "C") cultures
+			switch (CultureInfo.CurrentUICulture.TwoLetterISOLanguageName) {
+				case "en":
+				case "iv":
+					return;
 			}
 
+			// We can't dispose this resource set, as we can't be sure if it isn't used somewhere else, rely on GC in this case
 			ResourceSet defaultResourceSet = Strings.ResourceManager.GetResourceSet(CultureInfo.GetCultureInfo("en-US"), true, true);
 
 			if (defaultResourceSet == null) {
@@ -296,6 +259,7 @@ namespace ArchiSteamFarm {
 				return;
 			}
 
+			// We can't dispose this resource set, as we can't be sure if it isn't used somewhere else, rely on GC in this case
 			ResourceSet currentResourceSet = Strings.ResourceManager.GetResourceSet(CultureInfo.CurrentUICulture, true, true);
 
 			if (currentResourceSet == null) {
@@ -325,7 +289,13 @@ namespace ArchiSteamFarm {
 		}
 
 		private static async Task InitGlobalDatabaseAndServices() {
-			string globalDatabaseFile = Path.Combine(SharedInfo.ConfigDirectory, SharedInfo.GlobalDatabaseFileName);
+			string globalDatabaseFile = ASF.GetFilePath(ASF.EFileType.Database);
+
+			if (string.IsNullOrEmpty(globalDatabaseFile)) {
+				ASF.ArchiLogger.LogNullError(nameof(globalDatabaseFile));
+
+				return;
+			}
 
 			if (!File.Exists(globalDatabaseFile)) {
 				ASF.ArchiLogger.LogGenericInfo(Strings.Welcome);
@@ -334,9 +304,9 @@ namespace ArchiSteamFarm {
 				await Task.Delay(5 * 1000).ConfigureAwait(false);
 			}
 
-			GlobalDatabase = await GlobalDatabase.CreateOrLoad(globalDatabaseFile).ConfigureAwait(false);
+			GlobalDatabase globalDatabase = await GlobalDatabase.CreateOrLoad(globalDatabaseFile).ConfigureAwait(false);
 
-			if (GlobalDatabase == null) {
+			if (globalDatabase == null) {
 				ASF.ArchiLogger.LogGenericError(string.Format(Strings.ErrorDatabaseInvalid, globalDatabaseFile));
 				await Task.Delay(5 * 1000).ConfigureAwait(false);
 				await Exit(1).ConfigureAwait(false);
@@ -344,24 +314,35 @@ namespace ArchiSteamFarm {
 				return;
 			}
 
+			ASF.InitGlobalDatabase(globalDatabase);
+
 			// If debugging is on, we prepare debug directory prior to running
 			if (Debugging.IsUserDebugging) {
-				ASF.ArchiLogger.LogGenericDebug(SharedInfo.GlobalDatabaseFileName + ": " + JsonConvert.SerializeObject(GlobalDatabase, Formatting.Indented));
+				if (Debugging.IsDebugConfigured) {
+					ASF.ArchiLogger.LogGenericDebug(globalDatabaseFile + ": " + JsonConvert.SerializeObject(ASF.GlobalDatabase, Formatting.Indented));
+				}
+
 				Logging.EnableTraceLogging();
 
-				if (Directory.Exists(SharedInfo.DebugDirectory)) {
-					try {
-						Directory.Delete(SharedInfo.DebugDirectory, true);
-						await Task.Delay(1000).ConfigureAwait(false); // Dirty workaround giving Windows some time to sync
-					} catch (IOException e) {
-						ASF.ArchiLogger.LogGenericException(e);
+				if (Debugging.IsDebugConfigured) {
+					DebugLog.AddListener(new Debugging.DebugListener());
+					DebugLog.Enabled = true;
+
+					if (Directory.Exists(SharedInfo.DebugDirectory)) {
+						try {
+							Directory.Delete(SharedInfo.DebugDirectory, true);
+							await Task.Delay(1000).ConfigureAwait(false); // Dirty workaround giving Windows some time to sync
+						} catch (Exception e) {
+							ASF.ArchiLogger.LogGenericException(e);
+						}
 					}
 				}
 
-				Directory.CreateDirectory(SharedInfo.DebugDirectory);
-
-				DebugLog.AddListener(new Debugging.DebugListener());
-				DebugLog.Enabled = true;
+				try {
+					Directory.CreateDirectory(SharedInfo.DebugDirectory);
+				} catch (Exception e) {
+					ASF.ArchiLogger.LogGenericException(e);
+				}
 			}
 
 			WebBrowser.Init();
@@ -378,7 +359,8 @@ namespace ArchiSteamFarm {
 			// Ensure that IPC is stopped before we finalize shutdown sequence
 			await ArchiKestrel.Stop().ConfigureAwait(false);
 
-			if (Bot.Bots.Count > 0) {
+			// Stop all the active bots so they can disconnect cleanly
+			if (Bot.Bots?.Count > 0) {
 				// Stop() function can block due to SK2 sockets, don't forget a maximum delay
 				await Task.WhenAny(Utilities.InParallel(Bot.Bots.Values.Select(bot => Task.Run(() => bot.Stop(true)))), Task.Delay(Bot.Bots.Count * WebBrowser.MaxTries * 1000)).ConfigureAwait(false);
 
@@ -386,7 +368,11 @@ namespace ArchiSteamFarm {
 				await Task.Delay(1000).ConfigureAwait(false);
 			}
 
+			// Flush all the pending writes to log files
 			LogManager.Flush();
+
+			// Unregister the process from single instancing
+			OS.UnregisterProcess();
 
 			return true;
 		}
@@ -433,6 +419,16 @@ namespace ArchiSteamFarm {
 				return;
 			}
 
+			try {
+				string envCryptKey = Environment.GetEnvironmentVariable(SharedInfo.EnvironmentVariableCryptKey);
+
+				if (!string.IsNullOrEmpty(envCryptKey)) {
+					HandleCryptKeyArgument(envCryptKey);
+				}
+			} catch (Exception e) {
+				ASF.ArchiLogger.LogGenericException(e);
+			}
+
 			bool cryptKeyNext = false;
 
 			foreach (string arg in args) {
@@ -454,7 +450,6 @@ namespace ArchiSteamFarm {
 
 						break;
 					default:
-
 						if (cryptKeyNext) {
 							cryptKeyNext = false;
 							HandleCryptKeyArgument(arg);
@@ -474,19 +469,44 @@ namespace ArchiSteamFarm {
 				return;
 			}
 
+			try {
+				string envNetworkGroup = Environment.GetEnvironmentVariable(SharedInfo.EnvironmentVariableNetworkGroup);
+
+				if (!string.IsNullOrEmpty(envNetworkGroup)) {
+					HandleNetworkGroupArgument(envNetworkGroup);
+				}
+
+				string envPath = Environment.GetEnvironmentVariable(SharedInfo.EnvironmentVariablePath);
+
+				if (!string.IsNullOrEmpty(envPath)) {
+					HandlePathArgument(envPath);
+				}
+			} catch (Exception e) {
+				ASF.ArchiLogger.LogGenericException(e);
+			}
+
+			bool networkGroupNext = false;
 			bool pathNext = false;
 
 			foreach (string arg in args) {
 				switch (arg) {
+					case "--network-group" when !networkGroupNext:
+						networkGroupNext = true;
+
+						break;
 					case "--path" when !pathNext:
 						pathNext = true;
 
 						break;
 					default:
-
-						if (pathNext) {
+						if (networkGroupNext) {
+							networkGroupNext = false;
+							HandleNetworkGroupArgument(arg);
+						} else if (pathNext) {
 							pathNext = false;
 							HandlePathArgument(arg);
+						} else if ((arg.Length > 16) && arg.StartsWith("--network-group=", StringComparison.Ordinal)) {
+							HandleNetworkGroupArgument(arg.Substring(16));
 						} else if ((arg.Length > 7) && arg.StartsWith("--path=", StringComparison.Ordinal)) {
 							HandlePathArgument(arg.Substring(7));
 						}

@@ -1,18 +1,18 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
 // /_/   \_\|_|   \___||_| |_||_||____/  \__|\___| \__,_||_| |_| |_||_|   \__,_||_|   |_| |_| |_|
-// 
-// Copyright 2015-2019 Łukasz "JustArchi" Domeradzki
+// |
+// Copyright 2015-2020 Łukasz "JustArchi" Domeradzki
 // Contact: JustArchi@JustArchi.net
-// 
+// |
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+// |
 // http://www.apache.org/licenses/LICENSE-2.0
-// 
+// |
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using ArchiSteamFarm.Collections;
@@ -32,15 +33,12 @@ using JetBrains.Annotations;
 using SteamKit2;
 
 namespace ArchiSteamFarm {
-	public sealed class Actions : IDisposable {
+	public sealed class Actions : IAsyncDisposable {
 		private static readonly SemaphoreSlim GiftCardsSemaphore = new SemaphoreSlim(1, 1);
-		private static readonly SemaphoreSlim GiftsSemaphore = new SemaphoreSlim(1, 1);
 
 		private readonly Bot Bot;
 		private readonly ConcurrentHashSet<ulong> HandledGifts = new ConcurrentHashSet<ulong>();
 		private readonly SemaphoreSlim TradingSemaphore = new SemaphoreSlim(1, 1);
-
-		internal bool SkipFirstShutdown { get; set; }
 
 		private Timer CardsFarmerResumeTimer;
 		private bool ProcessingGiftsScheduled;
@@ -48,18 +46,56 @@ namespace ArchiSteamFarm {
 
 		internal Actions([NotNull] Bot bot) => Bot = bot ?? throw new ArgumentNullException(nameof(bot));
 
-		public void Dispose() {
+		public async ValueTask DisposeAsync() {
 			// Those are objects that are always being created if constructor doesn't throw exception
 			TradingSemaphore.Dispose();
 
 			// Those are objects that might be null and the check should be in-place
-			CardsFarmerResumeTimer?.Dispose();
+			if (CardsFarmerResumeTimer != null) {
+				await CardsFarmerResumeTimer.DisposeAsync().ConfigureAwait(false);
+			}
 		}
 
 		[PublicAPI]
-		public async Task<bool> AcceptConfirmations(bool accept, Steam.ConfirmationDetails.EType? acceptedType = null, IReadOnlyCollection<ulong> acceptedTradeOfferIDs = null, bool waitIfNeeded = false) {
+		public static (bool Success, string Message) Exit() {
+			// Schedule the task after some time so user can receive response
+			Utilities.InBackground(
+				async () => {
+					await Task.Delay(1000).ConfigureAwait(false);
+					await Program.Exit().ConfigureAwait(false);
+				}
+			);
+
+			return (true, Strings.Done);
+		}
+
+		[PublicAPI]
+		public async Task<(bool Success, string Token, string Message)> GenerateTwoFactorAuthenticationToken() {
 			if (!Bot.HasMobileAuthenticator) {
-				return false;
+				return (false, null, Strings.BotNoASFAuthenticator);
+			}
+
+			string token = await Bot.BotDatabase.MobileAuthenticator.GenerateToken().ConfigureAwait(false);
+
+			return (true, token, Strings.Success);
+		}
+
+		[ItemNotNull]
+		[PublicAPI]
+		public async Task<IDisposable> GetTradingLock() {
+			await TradingSemaphore.WaitAsync().ConfigureAwait(false);
+
+			return new SemaphoreLock(TradingSemaphore);
+		}
+
+		[PublicAPI]
+		public async Task<(bool Success, string Message)> HandleTwoFactorAuthenticationConfirmations(bool accept, Steam.ConfirmationDetails.EType? acceptedType = null, IReadOnlyCollection<ulong> acceptedTradeOfferIDs = null, bool waitIfNeeded = false) {
+			if (!Bot.HasMobileAuthenticator) {
+				return (false, Strings.BotNoASFAuthenticator);
+			}
+
+			if (!Bot.IsConnectedAndLoggedOn) {
+				return (false, Strings.BotNotConnected);
 			}
 
 			HashSet<ulong> handledTradeOfferIDs = null;
@@ -77,7 +113,9 @@ namespace ArchiSteamFarm {
 
 				// If we can skip asking for details, we can handle confirmations right away
 				if ((acceptedTradeOfferIDs == null) || (acceptedTradeOfferIDs.Count == 0)) {
-					return await Bot.BotDatabase.MobileAuthenticator.HandleConfirmations(confirmations, accept).ConfigureAwait(false);
+					bool result = await Bot.BotDatabase.MobileAuthenticator.HandleConfirmations(confirmations, accept).ConfigureAwait(false);
+
+					return (result, result ? string.Format(Strings.BotHandledConfirmations, confirmations.Count) : Strings.WarningFailed);
 				}
 
 				IList<Steam.ConfirmationDetails> results = await Utilities.InParallel(confirmations.Select(Bot.BotDatabase.MobileAuthenticator.GetConfirmationDetails)).ConfigureAwait(false);
@@ -91,7 +129,7 @@ namespace ArchiSteamFarm {
 				}
 
 				if (!await Bot.BotDatabase.MobileAuthenticator.HandleConfirmations(confirmations, accept).ConfigureAwait(false)) {
-					return false;
+					return (false, Strings.WarningFailed);
 				}
 
 				IEnumerable<ulong> handledTradeOfferIDsThisRound = results.Where(details => (details != null) && (details.TradeOfferID != 0)).Select(result => result.TradeOfferID);
@@ -104,28 +142,15 @@ namespace ArchiSteamFarm {
 
 				// Check if those are all that we were expected to confirm
 				if (acceptedTradeOfferIDs.All(handledTradeOfferIDs.Contains)) {
-					return true;
+					return (true, string.Format(Strings.BotHandledConfirmations, acceptedTradeOfferIDs.Count));
 				}
 			}
 
-			return !waitIfNeeded;
+			return (!waitIfNeeded, !waitIfNeeded ? Strings.Success : string.Format(Strings.ErrorRequestFailedTooManyTimes, WebBrowser.MaxTries));
 		}
 
 		[PublicAPI]
-		public static (bool Success, string Output) Exit() {
-			// Schedule the task after some time so user can receive response
-			Utilities.InBackground(
-				async () => {
-					await Task.Delay(1000).ConfigureAwait(false);
-					await Program.Exit().ConfigureAwait(false);
-				}
-			);
-
-			return (true, Strings.Done);
-		}
-
-		[PublicAPI]
-		public async Task<(bool Success, string Output)> Pause(bool permanent, ushort resumeInSeconds = 0) {
+		public async Task<(bool Success, string Message)> Pause(bool permanent, ushort resumeInSeconds = 0) {
 			if (Bot.CardsFarmer.Paused) {
 				return (false, Strings.BotAutomaticIdlingPausedAlready);
 			}
@@ -141,20 +166,40 @@ namespace ArchiSteamFarm {
 			}
 
 			if (resumeInSeconds > 0) {
-				if (CardsFarmerResumeTimer != null) {
-					CardsFarmerResumeTimer.Dispose();
-					CardsFarmerResumeTimer = null;
+				if (CardsFarmerResumeTimer == null) {
+					CardsFarmerResumeTimer = new Timer(
+						e => Resume(),
+						null,
+						TimeSpan.FromSeconds(resumeInSeconds), // Delay
+						Timeout.InfiniteTimeSpan // Period
+					);
+				} else {
+					CardsFarmerResumeTimer.Change(TimeSpan.FromSeconds(resumeInSeconds), Timeout.InfiniteTimeSpan);
 				}
-
-				CardsFarmerResumeTimer = new Timer(
-					e => Resume(),
-					null,
-					TimeSpan.FromSeconds(resumeInSeconds), // Delay
-					Timeout.InfiniteTimeSpan // Period
-				);
 			}
 
 			return (true, Strings.BotAutomaticIdlingNowPaused);
+		}
+
+		[PublicAPI]
+		public async Task<(bool Success, string Message)> Play(IEnumerable<uint> gameIDs, string gameName = null) {
+			if (gameIDs == null) {
+				Bot.ArchiLogger.LogNullError(nameof(gameIDs));
+
+				return (false, string.Format(Strings.ErrorObjectIsNull, nameof(gameIDs)));
+			}
+
+			if (!Bot.IsConnectedAndLoggedOn) {
+				return (false, Strings.BotNotConnected);
+			}
+
+			if (!Bot.CardsFarmer.Paused) {
+				await Bot.CardsFarmer.Pause(true).ConfigureAwait(false);
+			}
+
+			await Bot.ArchiHandler.PlayGames(gameIDs, gameName).ConfigureAwait(false);
+
+			return (true, Strings.Done);
 		}
 
 		[PublicAPI]
@@ -165,7 +210,7 @@ namespace ArchiSteamFarm {
 		}
 
 		[PublicAPI]
-		public static (bool Success, string Output) Restart() {
+		public static (bool Success, string Message) Restart() {
 			// Schedule the task after some time so user can receive response
 			Utilities.InBackground(
 				async () => {
@@ -178,7 +223,7 @@ namespace ArchiSteamFarm {
 		}
 
 		[PublicAPI]
-		public (bool Success, string Output) Resume() {
+		public (bool Success, string Message) Resume() {
 			if (!Bot.CardsFarmer.Paused) {
 				return (false, Strings.BotAutomaticIdlingResumedAlready);
 			}
@@ -189,7 +234,7 @@ namespace ArchiSteamFarm {
 		}
 
 		[PublicAPI]
-		public async Task<(bool Success, string Output)> SendTradeOffer(uint appID = Steam.Asset.SteamAppID, uint contextID = Steam.Asset.SteamCommunityContextID, ulong targetSteamID = 0, IReadOnlyCollection<uint> wantedRealAppIDs = null, IReadOnlyCollection<Steam.Asset.EType> wantedTypes = null) {
+		public async Task<(bool Success, string Message)> SendInventory(uint appID = Steam.Asset.SteamAppID, ulong contextID = Steam.Asset.SteamCommunityContextID, ulong targetSteamID = 0, string tradeToken = null, Func<Steam.Asset, bool> filterFunction = null) {
 			if ((appID == 0) || (contextID == 0)) {
 				Bot.ArchiLogger.LogNullError(nameof(appID) + " || " + nameof(contextID));
 
@@ -206,6 +251,10 @@ namespace ArchiSteamFarm {
 				if (targetSteamID == 0) {
 					return (false, Strings.BotLootingMasterNotDefined);
 				}
+
+				if (string.IsNullOrEmpty(tradeToken) && !string.IsNullOrEmpty(Bot.BotConfig.SteamTradeToken)) {
+					tradeToken = Bot.BotConfig.SteamTradeToken;
+				}
 			}
 
 			if (targetSteamID == Bot.SteamID) {
@@ -220,6 +269,7 @@ namespace ArchiSteamFarm {
 				TradingScheduled = true;
 			}
 
+			filterFunction ??= item => true;
 			await TradingSemaphore.WaitAsync().ConfigureAwait(false);
 
 			try {
@@ -227,9 +277,19 @@ namespace ArchiSteamFarm {
 					TradingScheduled = false;
 				}
 
-				HashSet<Steam.Asset> inventory = await Bot.ArchiWebHandler.GetInventory(Bot.SteamID, appID, contextID, true, wantedRealAppIDs, wantedTypes).ConfigureAwait(false);
+				HashSet<Steam.Asset> inventory;
 
-				if ((inventory == null) || (inventory.Count == 0)) {
+				try {
+					inventory = await Bot.ArchiWebHandler.GetInventoryAsync(Bot.SteamID, appID, contextID).Where(item => item.Tradable && filterFunction(item)).ToHashSetAsync().ConfigureAwait(false);
+				} catch (HttpRequestException e) {
+					return (false, string.Format(Strings.WarningFailedWithError, e.Message));
+				} catch (Exception e) {
+					Bot.ArchiLogger.LogGenericException(e);
+
+					return (false, string.Format(Strings.WarningFailedWithError, e.Message));
+				}
+
+				if (inventory.Count == 0) {
 					return (false, string.Format(Strings.ErrorIsEmpty, nameof(inventory)));
 				}
 
@@ -237,10 +297,20 @@ namespace ArchiSteamFarm {
 					return (false, Strings.BotLootingFailed);
 				}
 
-				(bool success, HashSet<ulong> mobileTradeOfferIDs) = await Bot.ArchiWebHandler.SendTradeOffer(targetSteamID, inventory, token: Bot.BotConfig.SteamTradeToken).ConfigureAwait(false);
+				if (string.IsNullOrEmpty(tradeToken) && (Bot.SteamFriends.GetFriendRelationship(targetSteamID) != EFriendRelationship.Friend)) {
+					Bot targetBot = Bot.Bots.Values.FirstOrDefault(bot => bot.SteamID == targetSteamID);
+
+					if (targetBot?.IsConnectedAndLoggedOn == true) {
+						tradeToken = await targetBot.ArchiHandler.GetTradeToken().ConfigureAwait(false);
+					}
+				}
+
+				(bool success, HashSet<ulong> mobileTradeOfferIDs) = await Bot.ArchiWebHandler.SendTradeOffer(targetSteamID, inventory, token: tradeToken).ConfigureAwait(false);
 
 				if ((mobileTradeOfferIDs != null) && (mobileTradeOfferIDs.Count > 0) && Bot.HasMobileAuthenticator) {
-					if (!await AcceptConfirmations(true, Steam.ConfirmationDetails.EType.Trade, mobileTradeOfferIDs, true).ConfigureAwait(false)) {
+					(bool twoFactorSuccess, _) = await HandleTwoFactorAuthenticationConfirmations(true, Steam.ConfirmationDetails.EType.Trade, mobileTradeOfferIDs, true).ConfigureAwait(false);
+
+					if (!twoFactorSuccess) {
 						return (false, Strings.BotLootingFailed);
 					}
 				}
@@ -256,19 +326,18 @@ namespace ArchiSteamFarm {
 		}
 
 		[PublicAPI]
-		public (bool Success, string Output) Start() {
+		public (bool Success, string Message) Start() {
 			if (Bot.KeepRunning) {
 				return (false, Strings.BotAlreadyRunning);
 			}
 
-			SkipFirstShutdown = true;
 			Utilities.InBackground(Bot.Start);
 
 			return (true, Strings.Done);
 		}
 
 		[PublicAPI]
-		public (bool Success, string Output) Stop() {
+		public (bool Success, string Message) Stop() {
 			if (!Bot.KeepRunning) {
 				return (false, Strings.BotAlreadyStopped);
 			}
@@ -279,20 +348,20 @@ namespace ArchiSteamFarm {
 		}
 
 		[PublicAPI]
-		public static async Task<(bool Success, string Message)> Update() {
+		public static async Task<(bool Success, string Message, Version Version)> Update() {
 			Version version = await ASF.Update(true).ConfigureAwait(false);
 
 			if (version == null) {
-				return (false, null);
+				return (false, null, null);
 			}
 
 			if (SharedInfo.Version >= version) {
-				return (false, "V" + SharedInfo.Version + " ≥ V" + version);
+				return (false, "V" + SharedInfo.Version + " ≥ V" + version, version);
 			}
 
 			Utilities.InBackground(ASF.RestartOrExit);
 
-			return (true, version.ToString());
+			return (true, null, version);
 		}
 
 		internal async Task AcceptDigitalGiftCards() {
@@ -363,28 +432,31 @@ namespace ArchiSteamFarm {
 			}
 		}
 
-		[ItemNotNull]
-		internal async Task<SemaphoreLock> GetTradingLock() {
-			await TradingSemaphore.WaitAsync().ConfigureAwait(false);
-
-			return new SemaphoreLock(TradingSemaphore);
-		}
-
 		internal void OnDisconnected() => HandledGifts.Clear();
 
-		private ulong GetFirstSteamMasterID() => Bot.BotConfig.SteamUserPermissions.Where(kv => (kv.Key != 0) && (kv.Value == BotConfig.EPermission.Master)).Select(kv => kv.Key).OrderByDescending(steamID => steamID != Bot.SteamID).ThenBy(steamID => steamID).FirstOrDefault();
+		private ulong GetFirstSteamMasterID() {
+			ulong steamMasterID = Bot.BotConfig.SteamUserPermissions.Where(kv => (kv.Key != 0) && (kv.Key != Bot.SteamID) && new SteamID(kv.Key).IsIndividualAccount && (kv.Value == BotConfig.EPermission.Master)).Select(kv => kv.Key).OrderBy(steamID => steamID).FirstOrDefault();
+
+			return steamMasterID > 0 ? steamMasterID : (ASF.GlobalConfig.SteamOwnerID != 0) && new SteamID(ASF.GlobalConfig.SteamOwnerID).IsIndividualAccount ? ASF.GlobalConfig.SteamOwnerID : 0;
+		}
 
 		private static async Task LimitGiftsRequestsAsync() {
-			if (Program.GlobalConfig.GiftsLimiterDelay == 0) {
+			if (ASF.GiftsSemaphore == null) {
+				ASF.ArchiLogger.LogNullError(nameof(ASF.GiftsSemaphore));
+
 				return;
 			}
 
-			await GiftsSemaphore.WaitAsync().ConfigureAwait(false);
+			if (ASF.GlobalConfig.GiftsLimiterDelay == 0) {
+				return;
+			}
+
+			await ASF.GiftsSemaphore.WaitAsync().ConfigureAwait(false);
 
 			Utilities.InBackground(
 				async () => {
-					await Task.Delay(Program.GlobalConfig.GiftsLimiterDelay * 1000).ConfigureAwait(false);
-					GiftsSemaphore.Release();
+					await Task.Delay(ASF.GlobalConfig.GiftsLimiterDelay * 1000).ConfigureAwait(false);
+					ASF.GiftsSemaphore.Release();
 				}
 			);
 		}

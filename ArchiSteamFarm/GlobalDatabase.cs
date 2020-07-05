@@ -1,18 +1,18 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
 // /_/   \_\|_|   \___||_| |_||_||____/  \__|\___| \__,_||_| |_| |_||_|   \__,_||_|   |_| |_| |_|
-// 
-// Copyright 2015-2019 Łukasz "JustArchi" Domeradzki
+// |
+// Copyright 2015-2020 Łukasz "JustArchi" Domeradzki
 // Contact: JustArchi@JustArchi.net
-// 
+// |
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+// |
 // http://www.apache.org/licenses/LICENSE-2.0
-// 
+// |
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,30 +26,53 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ArchiSteamFarm.Helpers;
+using ArchiSteamFarm.Localization;
 using ArchiSteamFarm.SteamKit2;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 
 namespace ArchiSteamFarm {
-	internal sealed class GlobalDatabase : IDisposable {
+	public sealed class GlobalDatabase : SerializableFile {
 		[JsonProperty(Required = Required.DisallowNull)]
-		internal readonly Guid Guid = Guid.NewGuid();
+		[PublicAPI]
+		public readonly Guid Guid = Guid.NewGuid();
 
-		[JsonProperty(Required = Required.DisallowNull)]
-		internal readonly ConcurrentDictionary<uint, (uint ChangeNumber, HashSet<uint> AppIDs)> PackagesData = new ConcurrentDictionary<uint, (uint ChangeNumber, HashSet<uint> AppIDs)>();
+		[JsonIgnore]
+		[PublicAPI]
+		public IReadOnlyDictionary<uint, ulong> PackageAccessTokensReadOnly => PackagesAccessTokens;
+
+		[JsonIgnore]
+		[PublicAPI]
+		public IReadOnlyDictionary<uint, (uint ChangeNumber, HashSet<uint> AppIDs)> PackagesDataReadOnly => PackagesData;
 
 		[JsonProperty(Required = Required.DisallowNull)]
 		internal readonly InMemoryServerListProvider ServerListProvider = new InMemoryServerListProvider();
 
-		private readonly SemaphoreSlim FileSemaphore = new SemaphoreSlim(1, 1);
+		[JsonProperty(Required = Required.DisallowNull)]
+		private readonly ConcurrentDictionary<uint, ulong> PackagesAccessTokens = new ConcurrentDictionary<uint, ulong>();
+
+		[JsonProperty(Required = Required.DisallowNull)]
+		private readonly ConcurrentDictionary<uint, (uint ChangeNumber, HashSet<uint> AppIDs)> PackagesData = new ConcurrentDictionary<uint, (uint ChangeNumber, HashSet<uint> AppIDs)>();
+
 		private readonly SemaphoreSlim PackagesRefreshSemaphore = new SemaphoreSlim(1, 1);
 
-		[JsonProperty(PropertyName = "_CellID", Required = Required.DisallowNull)]
-		internal uint CellID { get; private set; }
+		internal uint CellID {
+			get => BackingCellID;
 
-		private string FilePath;
+			set {
+				if (BackingCellID == value) {
+					return;
+				}
 
-		// This constructor is used when creating new database
+				BackingCellID = value;
+				Utilities.InBackground(Save);
+			}
+		}
+
+		[JsonProperty(PropertyName = "_" + nameof(CellID), Required = Required.DisallowNull)]
+		private uint BackingCellID;
+
 		private GlobalDatabase([NotNull] string filePath) : this() {
 			if (string.IsNullOrEmpty(filePath)) {
 				throw new ArgumentNullException(nameof(filePath));
@@ -58,16 +81,18 @@ namespace ArchiSteamFarm {
 			FilePath = filePath;
 		}
 
-		// This constructor is used only by deserializer
+		[JsonConstructor]
 		private GlobalDatabase() => ServerListProvider.ServerListUpdated += OnServerListUpdated;
 
-		public void Dispose() {
+		public override void Dispose() {
 			// Events we registered
 			ServerListProvider.ServerListUpdated -= OnServerListUpdated;
 
 			// Those are objects that are always being created if constructor doesn't throw exception
-			FileSemaphore.Dispose();
 			PackagesRefreshSemaphore.Dispose();
+
+			// Base dispose
+			base.Dispose();
 		}
 
 		[ItemCanBeNull]
@@ -85,7 +110,15 @@ namespace ArchiSteamFarm {
 			GlobalDatabase globalDatabase;
 
 			try {
-				globalDatabase = JsonConvert.DeserializeObject<GlobalDatabase>(await RuntimeCompatibility.File.ReadAllTextAsync(filePath).ConfigureAwait(false));
+				string json = await RuntimeCompatibility.File.ReadAllTextAsync(filePath).ConfigureAwait(false);
+
+				if (string.IsNullOrEmpty(json)) {
+					ASF.ArchiLogger.LogGenericError(string.Format(Strings.ErrorIsEmpty, nameof(json)));
+
+					return null;
+				}
+
+				globalDatabase = JsonConvert.DeserializeObject<GlobalDatabase>(json);
 			} catch (Exception e) {
 				ASF.ArchiLogger.LogGenericException(e);
 
@@ -103,14 +136,45 @@ namespace ArchiSteamFarm {
 			return globalDatabase;
 		}
 
-		internal HashSet<uint> GetPackageIDs(uint appID) {
-			if (appID == 0) {
-				ASF.ArchiLogger.LogNullError(nameof(appID));
+		internal HashSet<uint> GetPackageIDs(uint appID, IEnumerable<uint> packageIDs) {
+			if ((appID == 0) || (packageIDs == null)) {
+				ASF.ArchiLogger.LogNullError(nameof(appID) + " || " + nameof(packageIDs));
 
 				return null;
 			}
 
-			return PackagesData.Where(package => package.Value.AppIDs?.Contains(appID) == true).Select(package => package.Key).ToHashSet();
+			HashSet<uint> result = new HashSet<uint>();
+
+			foreach (uint packageID in packageIDs.Where(packageID => packageID != 0)) {
+				if (!PackagesData.TryGetValue(packageID, out (uint ChangeNumber, HashSet<uint> AppIDs) packagesData) || (packagesData.AppIDs?.Contains(appID) != true)) {
+					continue;
+				}
+
+				result.Add(packageID);
+			}
+
+			return result;
+		}
+
+		internal void RefreshPackageAccessTokens(IReadOnlyDictionary<uint, ulong> packageAccessTokens) {
+			if ((packageAccessTokens == null) || (packageAccessTokens.Count == 0)) {
+				ASF.ArchiLogger.LogNullError(nameof(packageAccessTokens));
+
+				return;
+			}
+
+			bool save = false;
+
+			foreach ((uint packageID, ulong currentAccessToken) in packageAccessTokens) {
+				if (!PackagesAccessTokens.TryGetValue(packageID, out ulong previousAccessToken) || (previousAccessToken != currentAccessToken)) {
+					PackagesAccessTokens[packageID] = currentAccessToken;
+					save = true;
+				}
+			}
+
+			if (save) {
+				Utilities.InBackground(Save);
+			}
 		}
 
 		internal async Task RefreshPackages(Bot bot, IReadOnlyDictionary<uint, uint> packages) {
@@ -123,7 +187,7 @@ namespace ArchiSteamFarm {
 			await PackagesRefreshSemaphore.WaitAsync().ConfigureAwait(false);
 
 			try {
-				HashSet<uint> packageIDs = packages.Where(package => (package.Key != 0) && (!PackagesData.TryGetValue(package.Key, out (uint ChangeNumber, HashSet<uint> _) packageData) || (packageData.ChangeNumber < package.Value))).Select(package => package.Key).ToHashSet();
+				HashSet<uint> packageIDs = packages.Where(package => (package.Key != 0) && (!PackagesData.TryGetValue(package.Key, out (uint ChangeNumber, HashSet<uint> AppIDs) packageData) || (packageData.ChangeNumber < package.Value))).Select(package => package.Key).ToHashSet();
 
 				if (packageIDs.Count == 0) {
 					return;
@@ -131,59 +195,32 @@ namespace ArchiSteamFarm {
 
 				Dictionary<uint, (uint ChangeNumber, HashSet<uint> AppIDs)> packagesData = await bot.GetPackagesData(packageIDs).ConfigureAwait(false);
 
-				if ((packagesData == null) || (packagesData.Count == 0)) {
+				if (packagesData == null) {
+					bot.ArchiLogger.LogGenericWarning(Strings.WarningFailed);
+
 					return;
 				}
 
-				foreach ((uint packageID, (uint ChangeNumber, HashSet<uint> AppIDs) package) in packagesData) {
-					PackagesData[packageID] = package;
+				bool save = false;
+
+				foreach ((uint packageID, (uint ChangeNumber, HashSet<uint> AppIDs) packageData) in packagesData) {
+					if (PackagesData.TryGetValue(packageID, out (uint ChangeNumber, HashSet<uint> AppIDs) previousData) && (packageData.ChangeNumber < previousData.ChangeNumber)) {
+						continue;
+					}
+
+					PackagesData[packageID] = packageData;
+					save = true;
 				}
 
-				await Save().ConfigureAwait(false);
+				if (save) {
+					Utilities.InBackground(Save);
+				}
 			} finally {
 				PackagesRefreshSemaphore.Release();
 			}
 		}
 
-		internal async Task SetCellID(uint value = 0) {
-			if (value == CellID) {
-				return;
-			}
-
-			CellID = value;
-			await Save().ConfigureAwait(false);
-		}
-
 		private async void OnServerListUpdated(object sender, EventArgs e) => await Save().ConfigureAwait(false);
-
-		private async Task Save() {
-			string json = JsonConvert.SerializeObject(this);
-
-			if (string.IsNullOrEmpty(json)) {
-				ASF.ArchiLogger.LogNullError(nameof(json));
-
-				return;
-			}
-
-			string newFilePath = FilePath + ".new";
-
-			await FileSemaphore.WaitAsync().ConfigureAwait(false);
-
-			try {
-				// We always want to write entire content to temporary file first, in order to never load corrupted data, also when target file doesn't exist
-				await RuntimeCompatibility.File.WriteAllTextAsync(newFilePath, json).ConfigureAwait(false);
-
-				if (File.Exists(FilePath)) {
-					File.Replace(newFilePath, FilePath, null);
-				} else {
-					File.Move(newFilePath, FilePath);
-				}
-			} catch (Exception e) {
-				ASF.ArchiLogger.LogGenericException(e);
-			} finally {
-				FileSemaphore.Release();
-			}
-		}
 
 		// ReSharper disable UnusedMember.Global
 		public bool ShouldSerializeCellID() => CellID != 0;

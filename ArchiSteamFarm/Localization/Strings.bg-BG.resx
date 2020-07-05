@@ -156,9 +156,6 @@
     <value>{0} е невалиден!</value>
     <comment>{0} will be replaced by object's name</comment>
   </data>
-  <data name="ErrorMobileAuthenticatorInvalidDeviceID" xml:space="preserve">
-    <value>Отказва да изпълни тази функцията, поради невалиден DeviceID в ASF 2FA!</value>
-  </data>
   <data name="ErrorNoBotsDefined" xml:space="preserve">
     <value>Няма настроени ботове. Да не би да сте забравили да настроите ASF?</value>
   </data>
@@ -245,10 +242,6 @@
     <value>Версия на компютъра Ви: {0} | Версия на сървъра: {1}</value>
     <comment>{0} will be replaced by current version, {1} will be replaced by remote version</comment>
   </data>
-  <data name="UserInputDeviceID" xml:space="preserve">
-    <value>Моля, въведете името на устройството за вашият mobile authenticator (включително "android:): </value>
-    <comment>Please note that this translation should end with space</comment>
-  </data>
   <data name="UserInputSteam2FA" xml:space="preserve">
     <value>Моля въведете Вашият 2FA код от Steam authenticator приложението: </value>
     <comment>Please note that this translation should end with space</comment>
@@ -268,10 +261,6 @@
   <data name="UserInputSteamPassword" xml:space="preserve">
     <value>Моля, въведете Вашата Steam парола: </value>
     <comment>Please note that this translation should end with space</comment>
-  </data>
-  <data name="UserInputUnknown" xml:space="preserve">
-    <value>Моля, въведете недокументирана стойност от {0}: </value>
-    <comment>{0} will be replaced by property name. Please note that this translation should end with space</comment>
   </data>
   <data name="WarningUnknownValuePleaseReport" xml:space="preserve">
     <value>Получена е непонятна стойност за {0}, моля съобщете за това: {1}</value>
@@ -404,9 +393,6 @@
   <data name="BotAuthenticatorImportFinished" xml:space="preserve">
     <value>Успешно приключи въвеждането на мобилното потвърждение!</value>
   </data>
-  <data name="BotAuthenticatorInvalidDeviceID" xml:space="preserve">
-    <value>Вашият DeviceID е неправилен или не съществува!</value>
-  </data>
   <data name="BotAuthenticatorToken" xml:space="preserve">
     <value>2FA Token: {0}</value>
     <comment>{0} will be replaced by generated 2FA token (string)</comment>
@@ -439,7 +425,10 @@
   <data name="BotInstanceNotStartingBecauseDisabled" xml:space="preserve">
     <value>Не се стартира този бот, защото е изключен във файлът с настройки!</value>
   </data>
-  
+  <data name="BotInvalidAuthenticatorDuringLogin" xml:space="preserve">
+    <value>Получена е грешката TwoFactorCodeMismatch {0} пъти поред. Или Вашите 2FA удостоверения не са вече валидни, или Вашият часовник не е синхронизиран, преустановяване!</value>
+    <comment>{0} will be replaced by maximum allowed number of failed 2FA attempts</comment>
+  </data>
   <data name="BotLoggedOff" xml:space="preserve">
     <value>Излязъл от Steam: {0}</value>
     <comment>{0} will be replaced by logging off reason (string)</comment>
@@ -610,8 +599,9 @@
     <value>Вие използвате версия, която е по-нова от последната версия за актуализация. Моля, имайте предвид, че предварителните версии са посветени на потребителите, които знаят как да докладват за бъгове, да се справят с проблеми и да дават обратна връзка - няма да ви бъде осигурена техническа подръжка.</value>
   </data>
   <data name="BotStats" xml:space="preserve">
-    <value>В момента се ползва памет: {0} MB.</value>
-    <comment>{0} will be replaced by number (in megabytes) of memory being used</comment>
+    <value>Текущо използване на паметта: {0} MB.
+Работно време на процеса: {1}</value>
+    <comment>{0} will be replaced by number (in megabytes) of memory being used, {1} will be replaced by translated TimeSpan string (such as "25 minutes"). Please note that this string should include newlines for formatting.</comment>
   </data>
   <data name="ClearingDiscoveryQueue" xml:space="preserve">
     <value>Изчистване на предложенията на Steam #{0}...</value>
@@ -643,18 +633,92 @@
   <data name="TargetBotNotConnected" xml:space="preserve">
     <value>Този бот не е свързан!</value>
   </data>
-  
-  
-  
-  
-  
+  <data name="BotWalletBalance" xml:space="preserve">
+    <value>Баланс в портфейла: {0} {1}</value>
+    <comment>{0} will be replaced by wallet balance value, {1} will be replaced by currency name</comment>
+  </data>
+  <data name="BotHasNoWallet" xml:space="preserve">
+    <value>Ботът няма портфейл.</value>
+  </data>
+  <data name="BotLevel" xml:space="preserve">
+    <value>Ботът има ниво {0}.</value>
+    <comment>{0} will be replaced by bot's level</comment>
+  </data>
+  <data name="ActivelyMatchingItems" xml:space="preserve">
+    <value>Сравняват се Steam предмети, #{0} път...</value>
+    <comment>{0} will be replaced by round number</comment>
+  </data>
+  <data name="DoneActivelyMatchingItems" xml:space="preserve">
+    <value>Завърши сравняването на Steam предмети, #{0} път.</value>
+    <comment>{0} will be replaced by round number</comment>
+  </data>
   <data name="ErrorAborted" xml:space="preserve">
     <value>Прекратен</value>
   </data>
-  
-  
-  
-  
-  
-  
+  <data name="ActivelyMatchingItemsRound" xml:space="preserve">
+    <value>Съвпадащи общо {0} комплекта този кръг.</value>
+    <comment>{0} will be replaced by number of sets traded</comment>
+  </data>
+  <data name="WarningExcessiveBotsCount" xml:space="preserve">
+    <value>Работите с повече ботове от нашите препоръчителни граници ({0}). Имайте предвид, че тази настройка не се поддържа и може да причини различни проблеми свързани със Steam, включително замразяване на акаунта. Вижте често задаваните въпроси за повече подробности.</value>
+    <comment>{0} will be replaced by our maximum recommended bots count (number)</comment>
+  </data>
+  <data name="PluginLoaded" xml:space="preserve">
+    <value>{0} е заредено успешно!</value>
+    <comment>{0} will be replaced by the name of the custom ASF plugin</comment>
+  </data>
+  <data name="PluginLoading" xml:space="preserve">
+    <value>Зареждане на {0} V{1}...</value>
+    <comment>{0} will be replaced by the name of the custom ASF plugin, {1} will be replaced by its version</comment>
+  </data>
+  <data name="NothingFound" xml:space="preserve">
+    <value>Нищо не е намерено!</value>
+  </data>
+  <data name="PluginsWarning" xml:space="preserve">
+    <value>Вие сте заредени един или повече персонализирани плъгини в ASF. Тъй като ние не може да предложим подкрепа за преработени настройки, моля свържете се с разработчиците на плъгини, които сте решили да използвате, в случай на някакви проблеми.</value>
+  </data>
+  <data name="PleaseWait" xml:space="preserve">
+    <value>Моля изчакайте...</value>
+  </data>
+  <data name="EnterCommand" xml:space="preserve">
+    <value>Въведи команда: </value>
+  </data>
+  <data name="Executing" xml:space="preserve">
+    <value>Изпълнение...</value>
+  </data>
+  <data name="InteractiveConsoleEnabled" xml:space="preserve">
+    <value>Интерактивната конзола е вече активна, натиснете 'c' за да влезето в команден режим.</value>
+  </data>
+  <data name="InteractiveConsoleNotAvailable" xml:space="preserve">
+    <value>Интерактивната конзола не е налична, защото липсва {0} конфигурирана стойност.</value>
+    <comment>{0} will be replaced by the name of the missing config property (string)</comment>
+  </data>
+  <data name="Response" xml:space="preserve">
+    <value>Отговор: {0}</value>
+    <comment>{0} will be replaced by the generated response (string)</comment>
+  </data>
+  <data name="BotGamesToRedeemInBackgroundCount" xml:space="preserve">
+    <value>Ботът има {0} игри оставащи в опашката на заден фон.</value>
+    <comment>{0} will be replaced by remaining number of games in BGR's queue</comment>
+  </data>
+  <data name="ErrorSingleInstanceRequired" xml:space="preserve">
+    <value>ASF процесът е вече работещ за тази директория, прекратяване!</value>
+  </data>
+  <data name="BotHandledConfirmations" xml:space="preserve">
+    <value>Успешно извършени {0} потвърждения!</value>
+    <comment>{0} will be replaced by number of confirmations</comment>
+  </data>
+  <data name="BotExtraIdlingCooldown" xml:space="preserve">
+    <value>Изчакване до {0}, за да се гарантира, че е може да започне ваденето на карти...</value>
+    <comment>{0} will be replaced by translated TimeSpan string (such as "1 minute")</comment>
+  </data>
+  <data name="UpdateCleanup" xml:space="preserve">
+    <value>Изтриване на старите файлове след обновление...</value>
+  </data>
+  <data name="BotGeneratingSteamParentalCode" xml:space="preserve">
+    <value>Генериране на Steam основен код, това може да отнеме доста време, вместо това, помислете да го сложите в конфигурацията...</value>
+  </data>
+  <data name="IPCConfigChanged" xml:space="preserve">
+    <value>IPC настройките са били променени!</value>
+  </data>
 </root>

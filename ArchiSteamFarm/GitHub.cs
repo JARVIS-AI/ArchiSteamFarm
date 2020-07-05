@@ -1,18 +1,18 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
 // /_/   \_\|_|   \___||_| |_||_||____/  \__|\___| \__,_||_| |_| |_||_|   \__,_||_|   |_| |_| |_|
-// 
-// Copyright 2015-2019 Łukasz "JustArchi" Domeradzki
+// |
+// Copyright 2015-2020 Łukasz "JustArchi" Domeradzki
 // Contact: JustArchi@JustArchi.net
-// 
+// |
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+// |
 // http://www.apache.org/licenses/LICENSE-2.0
-// 
+// |
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,7 +20,7 @@
 // limitations under the License.
 
 using System;
-using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
@@ -42,7 +42,7 @@ namespace ArchiSteamFarm {
 				return await GetReleaseFromURL(releaseURL).ConfigureAwait(false);
 			}
 
-			List<ReleaseResponse> response = await GetReleasesFromURL(releaseURL).ConfigureAwait(false);
+			ImmutableList<ReleaseResponse> response = await GetReleasesFromURL(releaseURL).ConfigureAwait(false);
 
 			return response?.FirstOrDefault();
 		}
@@ -56,19 +56,6 @@ namespace ArchiSteamFarm {
 			}
 
 			return await GetReleaseFromURL(SharedInfo.GithubReleaseURL + "/tags/" + version).ConfigureAwait(false);
-		}
-
-		[ItemCanBeNull]
-		internal static async Task<List<ReleaseResponse>> GetReleases(byte count) {
-			if (count == 0) {
-				ASF.ArchiLogger.LogNullError(nameof(count));
-
-				return null;
-			}
-
-			string releaseURL = SharedInfo.GithubReleaseURL + "?per_page=" + count;
-
-			return await GetReleasesFromURL(releaseURL).ConfigureAwait(false);
 		}
 
 		private static MarkdownDocument ExtractChangelogFromBody(string markdownText) {
@@ -92,7 +79,7 @@ namespace ArchiSteamFarm {
 
 		[ItemCanBeNull]
 		private static async Task<ReleaseResponse> GetReleaseFromURL(string releaseURL) {
-			if (string.IsNullOrEmpty(nameof(releaseURL))) {
+			if (string.IsNullOrEmpty(releaseURL)) {
 				ASF.ArchiLogger.LogNullError(nameof(releaseURL));
 
 				return null;
@@ -104,14 +91,14 @@ namespace ArchiSteamFarm {
 		}
 
 		[ItemCanBeNull]
-		private static async Task<List<ReleaseResponse>> GetReleasesFromURL(string releaseURL) {
-			if (string.IsNullOrEmpty(nameof(releaseURL))) {
+		private static async Task<ImmutableList<ReleaseResponse>> GetReleasesFromURL(string releaseURL) {
+			if (string.IsNullOrEmpty(releaseURL)) {
 				ASF.ArchiLogger.LogNullError(nameof(releaseURL));
 
 				return null;
 			}
 
-			WebBrowser.ObjectResponse<List<ReleaseResponse>> objectResponse = await ASF.WebBrowser.UrlGetToJsonObject<List<ReleaseResponse>>(releaseURL).ConfigureAwait(false);
+			WebBrowser.ObjectResponse<ImmutableList<ReleaseResponse>> objectResponse = await ASF.WebBrowser.UrlGetToJsonObject<ImmutableList<ReleaseResponse>>(releaseURL).ConfigureAwait(false);
 
 			return objectResponse?.Content;
 		}
@@ -119,7 +106,7 @@ namespace ArchiSteamFarm {
 		[SuppressMessage("ReSharper", "ClassCannotBeInstantiated")]
 		internal sealed class ReleaseResponse {
 			[JsonProperty(PropertyName = "assets", Required = Required.Always)]
-			internal readonly HashSet<Asset> Assets;
+			internal readonly ImmutableHashSet<Asset> Assets;
 
 			[JsonProperty(PropertyName = "prerelease", Required = Required.Always)]
 			internal readonly bool IsPreRelease;
@@ -132,8 +119,8 @@ namespace ArchiSteamFarm {
 
 			internal string ChangelogHTML {
 				get {
-					if (_ChangelogHTML != null) {
-						return _ChangelogHTML;
+					if (BackingChangelogHTML != null) {
+						return BackingChangelogHTML;
 					}
 
 					if (Changelog == null) {
@@ -142,20 +129,20 @@ namespace ArchiSteamFarm {
 						return null;
 					}
 
-					using (StringWriter writer = new StringWriter()) {
-						HtmlRenderer renderer = new HtmlRenderer(writer);
-						renderer.Render(Changelog);
-						writer.Flush();
+					using StringWriter writer = new StringWriter();
 
-						return _ChangelogHTML = writer.ToString();
-					}
+					HtmlRenderer renderer = new HtmlRenderer(writer);
+					renderer.Render(Changelog);
+					writer.Flush();
+
+					return BackingChangelogHTML = writer.ToString();
 				}
 			}
 
 			internal string ChangelogPlainText {
 				get {
-					if (_ChangelogPlainText != null) {
-						return _ChangelogPlainText;
+					if (BackingChangelogPlainText != null) {
+						return BackingChangelogPlainText;
 					}
 
 					if (Changelog == null) {
@@ -164,17 +151,17 @@ namespace ArchiSteamFarm {
 						return null;
 					}
 
-					using (StringWriter writer = new StringWriter()) {
-						HtmlRenderer renderer = new HtmlRenderer(writer) {
-							EnableHtmlForBlock = false,
-							EnableHtmlForInline = false
-						};
+					using StringWriter writer = new StringWriter();
 
-						renderer.Render(Changelog);
-						writer.Flush();
+					HtmlRenderer renderer = new HtmlRenderer(writer) {
+						EnableHtmlForBlock = false,
+						EnableHtmlForInline = false
+					};
 
-						return _ChangelogPlainText = writer.ToString();
-					}
+					renderer.Render(Changelog);
+					writer.Flush();
+
+					return BackingChangelogPlainText = writer.ToString();
 				}
 			}
 
@@ -185,17 +172,17 @@ namespace ArchiSteamFarm {
 
 			private MarkdownDocument Changelog {
 				get {
-					if (_Changelog != null) {
-						return _Changelog;
+					if (BackingChangelog != null) {
+						return BackingChangelog;
 					}
 
-					return _Changelog = ExtractChangelogFromBody(MarkdownBody);
+					return BackingChangelog = ExtractChangelogFromBody(MarkdownBody);
 				}
 			}
 
-			private MarkdownDocument _Changelog;
-			private string _ChangelogHTML;
-			private string _ChangelogPlainText;
+			private MarkdownDocument BackingChangelog;
+			private string BackingChangelogHTML;
+			private string BackingChangelogPlainText;
 
 			[JsonConstructor]
 			private ReleaseResponse() { }

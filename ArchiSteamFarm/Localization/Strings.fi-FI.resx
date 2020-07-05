@@ -148,7 +148,7 @@ StackTrace:
     <value>Poistutaan muulla kuin 0 virhekoodilla!</value>
   </data>
   <data name="ErrorFailingRequest" xml:space="preserve">
-    <value>Pyyntö evätty: {0}</value>
+    <value>Pyyntö epäonnistuu: {0}</value>
     <comment>{0} will be replaced by URL of the request</comment>
   </data>
   <data name="ErrorGlobalConfigNotLoaded" xml:space="preserve">
@@ -158,9 +158,6 @@ StackTrace:
   <data name="ErrorIsInvalid" xml:space="preserve">
     <value>{0} on virheellinen!</value>
     <comment>{0} will be replaced by object's name</comment>
-  </data>
-  <data name="ErrorMobileAuthenticatorInvalidDeviceID" xml:space="preserve">
-    <value>Kieltäydään suorittamasta tätä toimintoa virheellisen DeviceID:n takia ASF 2-vaiheisessa authentikoinnissa!</value>
   </data>
   <data name="ErrorNoBotsDefined" xml:space="preserve">
     <value>Botteja ei ole määritelty. Unohditko tehdä asetukset ASF varten?</value>
@@ -196,7 +193,7 @@ StackTrace:
     <value>Virhe!</value>
   </data>
   <data name="GlobalConfigChanged" xml:space="preserve">
-    <value>Globaali asetustiedostoa muutettiin!</value>
+    <value>Globaalia asetustiedostoa muutettiin!</value>
   </data>
   <data name="ErrorGlobalConfigRemoved" xml:space="preserve">
     <value>Globaali asetustiedosto poistettiin!</value>
@@ -229,7 +226,7 @@ StackTrace:
     <value>Valmis!</value>
   </data>
   <data name="UnlockingParentalAccount" xml:space="preserve">
-    <value>Avataan lapsilukitus...</value>
+    <value>Avataan tilin lapsilukitus...</value>
   </data>
   <data name="UpdateCheckingNewVersion" xml:space="preserve">
     <value>Tarkistetaan päivityksiä...</value>
@@ -248,16 +245,12 @@ StackTrace:
     <value>Paikallinen versio: {0} | Etäkäyttöversio: {1}</value>
     <comment>{0} will be replaced by current version, {1} will be replaced by remote version</comment>
   </data>
-  <data name="UserInputDeviceID" xml:space="preserve">
-    <value>Syötä mobiili authentikaattorin laite ID (sisältäen "android:"): </value>
-    <comment>Please note that this translation should end with space</comment>
-  </data>
   <data name="UserInputSteam2FA" xml:space="preserve">
-    <value>Syötä 2FA koodi Steam authentikointi sovelluksesta: </value>
+    <value>Syötä 2FA koodi Steam varmennus sovelluksesta: </value>
     <comment>Please note that this translation should end with space</comment>
   </data>
   <data name="UserInputSteamGuard" xml:space="preserve">
-    <value>Syötä SteamGuard authentikointi koodi joka lähetettiin sähköpostiisi: </value>
+    <value>Syötä SteamGuard varmennuskoodi, joka lähetettiin sähköpostiisi: </value>
     <comment>Please note that this translation should end with space</comment>
   </data>
   <data name="UserInputSteamLogin" xml:space="preserve">
@@ -272,10 +265,6 @@ StackTrace:
     <value>Syötä Steam-tilisi salasana: </value>
     <comment>Please note that this translation should end with space</comment>
   </data>
-  <data name="UserInputUnknown" xml:space="preserve">
-    <value>Syötä dokumentoimaton arvo kohteelle {0}: </value>
-    <comment>{0} will be replaced by property name. Please note that this translation should end with space</comment>
-  </data>
   <data name="WarningUnknownValuePleaseReport" xml:space="preserve">
     <value>Vastaanotettu tuntematon arvo {0}:lle, ole hyvä ja ilmoita tästä: {1}</value>
     <comment>{0} will be replaced by object's name, {1} will be replaced by value for that object</comment>
@@ -284,7 +273,7 @@ StackTrace:
     <value>IPC-palvelin on valmiina!</value>
   </data>
   <data name="IPCStarting" xml:space="preserve">
-    <value>Käynnistetään IPC serveriä...</value>
+    <value>Käynnistetään IPC-palvelinta...</value>
   </data>
   <data name="BotAlreadyStopped" xml:space="preserve">
     <value>Tämä botti on jo pysäytetty!</value>
@@ -406,9 +395,6 @@ StackTrace:
   </data>
   <data name="BotAuthenticatorImportFinished" xml:space="preserve">
     <value>Mobiili authentikaattorin tuonti onnistui!</value>
-  </data>
-  <data name="BotAuthenticatorInvalidDeviceID" xml:space="preserve">
-    <value>Sinun DeviceID on virheellinen tai sitä ei ole olemassa!</value>
   </data>
   <data name="BotAuthenticatorToken" xml:space="preserve">
     <value>2FA Koodi: {0}</value>
@@ -615,10 +601,7 @@ StackTrace:
   <data name="WarningPreReleaseVersion" xml:space="preserve">
     <value>Käytät versiota joka on uudempi kuin uusin julkaistu versio käyttämälläsi päivityskanavalla. Huomoithan että esi-julkaistut versiot ovat kehittyneille käyttäjille jotka osaavat raportoida virheistä, toimia ongelmien kanssa sekä antaa palautetta - teknistä tukea ei anneta.</value>
   </data>
-  <data name="BotStats" xml:space="preserve">
-    <value>Nykyisen muistinkäyttö: {0} MB.</value>
-    <comment>{0} will be replaced by number (in megabytes) of memory being used</comment>
-  </data>
+  
   <data name="ClearingDiscoveryQueue" xml:space="preserve">
     <value>Tyhjennetään Steamin discovery-jonoa #{0}...</value>
     <comment>{0} will be replaced by queue number</comment>
@@ -646,17 +629,89 @@ StackTrace:
     <value>Kierto ongelmalle {0} on aloitettu.</value>
     <comment>{0} will be replaced by the bug's name provided by ASF</comment>
   </data>
+  <data name="TargetBotNotConnected" xml:space="preserve">
+    <value>Haluttu botti ei ole yhdistetty!</value>
+  </data>
+  <data name="BotWalletBalance" xml:space="preserve">
+    <value>Lompakon saldo: {0} {1}</value>
+    <comment>{0} will be replaced by wallet balance value, {1} will be replaced by currency name</comment>
+  </data>
+  <data name="BotHasNoWallet" xml:space="preserve">
+    <value>Botilla ei ole lompakkoa.</value>
+  </data>
+  <data name="BotLevel" xml:space="preserve">
+    <value>Botin taso on {0}.</value>
+    <comment>{0} will be replaced by bot's level</comment>
+  </data>
+  <data name="ActivelyMatchingItems" xml:space="preserve">
+    <value>Vertaillaan Steam-esineitä, kierros #{0}...</value>
+    <comment>{0} will be replaced by round number</comment>
+  </data>
+  <data name="DoneActivelyMatchingItems" xml:space="preserve">
+    <value>Steam-esineiden vertailu valmis, kierros #{0}.</value>
+    <comment>{0} will be replaced by round number</comment>
+  </data>
+  <data name="ErrorAborted" xml:space="preserve">
+    <value>Keskeytetty!</value>
+  </data>
+  <data name="ActivelyMatchingItemsRound" xml:space="preserve">
+    <value>Vertailtiin yhteensä {0} settiä tällä kierroksella.</value>
+    <comment>{0} will be replaced by number of sets traded</comment>
+  </data>
+  <data name="WarningExcessiveBotsCount" xml:space="preserve">
+    <value>Ajat useampia botteja, kuin mitä suositeltumme raja, ({0}), mahdollistaa. Ota huomioon, että se ei ole tuettua ja saattaa aiheuttaa häiriöitä Steamin kanssa, mukaan lukien tilien jäähdytykset. Katso lisätietoja UKK: sta.</value>
+    <comment>{0} will be replaced by our maximum recommended bots count (number)</comment>
+  </data>
+  <data name="PluginLoaded" xml:space="preserve">
+    <value>{0} ladattiin onnistuneesti!</value>
+    <comment>{0} will be replaced by the name of the custom ASF plugin</comment>
+  </data>
+  <data name="PluginLoading" xml:space="preserve">
+    <value>Ladataan {0} V{1}...</value>
+    <comment>{0} will be replaced by the name of the custom ASF plugin, {1} will be replaced by its version</comment>
+  </data>
+  <data name="NothingFound" xml:space="preserve">
+    <value>Mitään ei löytynyt!</value>
+  </data>
+  <data name="PluginsWarning" xml:space="preserve">
+    <value>Olet ladannut yhden tai useamman mukautetun lisäosan ASF: ään. Koska emme pysty tarjoamaan tukea modauksille, käänny ongelmien ilmetessä kyseisien lisäosien tekijöiden puoleen.</value>
+  </data>
+  <data name="PleaseWait" xml:space="preserve">
+    <value>Odota hetki...</value>
+  </data>
+  <data name="EnterCommand" xml:space="preserve">
+    <value>Syötä komento: </value>
+  </data>
+  <data name="Executing" xml:space="preserve">
+    <value>Suoritetaan...</value>
+  </data>
+  <data name="InteractiveConsoleEnabled" xml:space="preserve">
+    <value>Vuorovaikutteinen konsoli on nyt aktiivinen. Paina 'c' siirtyäksesi komento-tilaan.</value>
+  </data>
+  <data name="InteractiveConsoleNotAvailable" xml:space="preserve">
+    <value>Vuorovaikutteinen konsoli ei ole käytettävissä, koska {0} asetus puuttuu.</value>
+    <comment>{0} will be replaced by the name of the missing config property (string)</comment>
+  </data>
+  <data name="Response" xml:space="preserve">
+    <value>Vastaus: {0}</value>
+    <comment>{0} will be replaced by the generated response (string)</comment>
+  </data>
+  <data name="BotGamesToRedeemInBackgroundCount" xml:space="preserve">
+    <value>Botilla on {0} peliä jäljellä taustajonossa.</value>
+    <comment>{0} will be replaced by remaining number of games in BGR's queue</comment>
+  </data>
+  <data name="ErrorSingleInstanceRequired" xml:space="preserve">
+    <value>ASF prosessi on jo käynnissä tässä työhakemistossa. Keskeytetään!</value>
+  </data>
   
   
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+  <data name="UpdateCleanup" xml:space="preserve">
+    <value>Siivotaan vanhat tiedostot päivityksen jälkeen...</value>
+  </data>
+  <data name="BotGeneratingSteamParentalCode" xml:space="preserve">
+    <value>Luodaan Steam lapsilukon koodi. Tämä saattaa kestää hetken. Harkitse lapsilukon syöttämistä suoraan asetustiedostoon...</value>
+  </data>
+  <data name="IPCConfigChanged" xml:space="preserve">
+    <value>IPC asetusta on muutettu!</value>
+  </data>
 </root>

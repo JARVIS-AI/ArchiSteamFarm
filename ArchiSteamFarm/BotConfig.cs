@@ -1,18 +1,18 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
 // /_/   \_\|_|   \___||_| |_||_||____/  \__|\___| \__,_||_| |_| |_||_|   \__,_||_|   |_| |_| |_|
-// 
-// Copyright 2015-2019 Łukasz "JustArchi" Domeradzki
+// |
+// Copyright 2015-2020 Łukasz "JustArchi" Domeradzki
 // Contact: JustArchi@JustArchi.net
-// 
+// |
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+// |
 // http://www.apache.org/licenses/LICENSE-2.0
-// 
+// |
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -37,6 +37,8 @@ using SteamKit2;
 namespace ArchiSteamFarm {
 	[SuppressMessage("ReSharper", "ClassCannotBeInstantiated")]
 	public sealed class BotConfig {
+		internal const byte SteamParentalCodeLength = 4;
+
 		private const bool DefaultAcceptGifts = false;
 		private const bool DefaultAutoSteamSaleEvent = false;
 		private const EBotBehaviour DefaultBotBehaviour = EBotBehaviour.None;
@@ -71,85 +73,88 @@ namespace ArchiSteamFarm {
 		private static readonly SemaphoreSlim WriteSemaphore = new SemaphoreSlim(1, 1);
 
 		[JsonProperty(Required = Required.DisallowNull)]
-		internal readonly bool AcceptGifts = DefaultAcceptGifts;
+		public readonly bool AcceptGifts = DefaultAcceptGifts;
 
 		[JsonProperty(Required = Required.DisallowNull)]
-		internal readonly bool AutoSteamSaleEvent = DefaultAutoSteamSaleEvent;
+		public readonly bool AutoSteamSaleEvent = DefaultAutoSteamSaleEvent;
 
 		[JsonProperty(Required = Required.DisallowNull)]
-		internal readonly EBotBehaviour BotBehaviour = DefaultBotBehaviour;
+		public readonly EBotBehaviour BotBehaviour = DefaultBotBehaviour;
 
 		[JsonProperty]
-		internal readonly string CustomGamePlayedWhileFarming = DefaultCustomGamePlayedWhileFarming;
+		public readonly string CustomGamePlayedWhileFarming = DefaultCustomGamePlayedWhileFarming;
 
 		[JsonProperty]
-		internal readonly string CustomGamePlayedWhileIdle = DefaultCustomGamePlayedWhileIdle;
+		public readonly string CustomGamePlayedWhileIdle = DefaultCustomGamePlayedWhileIdle;
 
 		[JsonProperty(Required = Required.DisallowNull)]
-		internal readonly bool Enabled = DefaultEnabled;
+		public readonly bool Enabled = DefaultEnabled;
 
 		[JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace, Required = Required.DisallowNull)]
-		internal readonly ImmutableList<EFarmingOrder> FarmingOrders = DefaultFarmingOrders;
+		public readonly ImmutableList<EFarmingOrder> FarmingOrders = DefaultFarmingOrders;
 
 		[JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace, Required = Required.DisallowNull)]
-		internal readonly ImmutableHashSet<uint> GamesPlayedWhileIdle = DefaultGamesPlayedWhileIdle;
+		public readonly ImmutableHashSet<uint> GamesPlayedWhileIdle = DefaultGamesPlayedWhileIdle;
 
 		[JsonProperty(Required = Required.DisallowNull)]
-		internal readonly byte HoursUntilCardDrops = DefaultHoursUntilCardDrops;
+		public readonly byte HoursUntilCardDrops = DefaultHoursUntilCardDrops;
 
 		[JsonProperty(Required = Required.DisallowNull)]
-		internal readonly bool IdlePriorityQueueOnly = DefaultIdlePriorityQueueOnly;
+		public readonly bool IdlePriorityQueueOnly = DefaultIdlePriorityQueueOnly;
 
 		[JsonProperty(Required = Required.DisallowNull)]
-		internal readonly bool IdleRefundableGames = DefaultIdleRefundableGames;
+		public readonly bool IdleRefundableGames = DefaultIdleRefundableGames;
 
 		[JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace, Required = Required.DisallowNull)]
-		internal readonly ImmutableHashSet<Steam.Asset.EType> LootableTypes = DefaultLootableTypes;
+		public readonly ImmutableHashSet<Steam.Asset.EType> LootableTypes = DefaultLootableTypes;
 
 		[JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace, Required = Required.DisallowNull)]
-		internal readonly ImmutableHashSet<Steam.Asset.EType> MatchableTypes = DefaultMatchableTypes;
+		public readonly ImmutableHashSet<Steam.Asset.EType> MatchableTypes = DefaultMatchableTypes;
 
 		[JsonProperty(Required = Required.DisallowNull)]
-		internal readonly EPersonaState OnlineStatus = DefaultOnlineStatus;
+		public readonly EPersonaState OnlineStatus = DefaultOnlineStatus;
 
 		[JsonProperty(Required = Required.DisallowNull)]
-		internal readonly ArchiCryptoHelper.ECryptoMethod PasswordFormat = DefaultPasswordFormat;
+		public readonly ArchiCryptoHelper.ECryptoMethod PasswordFormat = DefaultPasswordFormat;
 
 		[JsonProperty(Required = Required.DisallowNull)]
-		internal readonly bool Paused = DefaultPaused;
+		public readonly bool Paused = DefaultPaused;
 
 		[JsonProperty(Required = Required.DisallowNull)]
-		internal readonly ERedeemingPreferences RedeemingPreferences = DefaultRedeemingPreferences;
+		public readonly ERedeemingPreferences RedeemingPreferences = DefaultRedeemingPreferences;
 
 		[JsonProperty(Required = Required.DisallowNull)]
-		internal readonly bool SendOnFarmingFinished = DefaultSendOnFarmingFinished;
+		public readonly bool SendOnFarmingFinished = DefaultSendOnFarmingFinished;
 
 		[JsonProperty(Required = Required.DisallowNull)]
-		internal readonly byte SendTradePeriod = DefaultSendTradePeriod;
+		public readonly byte SendTradePeriod = DefaultSendTradePeriod;
 
 		[JsonProperty(Required = Required.DisallowNull)]
-		internal readonly bool ShutdownOnFarmingFinished = DefaultShutdownOnFarmingFinished;
+		public readonly bool ShutdownOnFarmingFinished = DefaultShutdownOnFarmingFinished;
 
 		[JsonProperty]
-		internal readonly string SteamTradeToken = DefaultSteamTradeToken;
+		public readonly string SteamTradeToken = DefaultSteamTradeToken;
 
 		[JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace, Required = Required.DisallowNull)]
-		internal readonly ImmutableDictionary<ulong, EPermission> SteamUserPermissions = DefaultSteamUserPermissions;
+		public readonly ImmutableDictionary<ulong, EPermission> SteamUserPermissions = DefaultSteamUserPermissions;
 
 		[JsonProperty(Required = Required.DisallowNull)]
-		internal readonly ETradingPreferences TradingPreferences = DefaultTradingPreferences;
+		public readonly ETradingPreferences TradingPreferences = DefaultTradingPreferences;
 
 		[JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace, Required = Required.DisallowNull)]
-		internal readonly ImmutableHashSet<Steam.Asset.EType> TransferableTypes = DefaultTransferableTypes;
+		public readonly ImmutableHashSet<Steam.Asset.EType> TransferableTypes = DefaultTransferableTypes;
 
 		[JsonProperty(Required = Required.DisallowNull)]
-		internal readonly bool UseLoginKeys = DefaultUseLoginKeys;
+		public readonly bool UseLoginKeys = DefaultUseLoginKeys;
+
+		[JsonProperty(Required = Required.DisallowNull)]
+		public ulong SteamMasterClanID { get; private set; } = DefaultSteamMasterClanID;
 
 		[JsonExtensionData]
 		internal Dictionary<string, JToken> AdditionalProperties {
 			get;
 			[UsedImplicitly]
-			private set;
+			set;
 		}
 
 		internal string DecryptedSteamPassword {
@@ -162,73 +167,69 @@ namespace ArchiSteamFarm {
 					return SteamPassword;
 				}
 
-				string decryptedPassword = ArchiCryptoHelper.Decrypt(PasswordFormat, SteamPassword);
+				string result = ArchiCryptoHelper.Decrypt(PasswordFormat, SteamPassword);
 
-				if (string.IsNullOrEmpty(decryptedPassword)) {
+				if (string.IsNullOrEmpty(result)) {
 					ASF.ArchiLogger.LogGenericError(string.Format(Strings.ErrorIsInvalid, nameof(SteamPassword)));
 
 					return null;
 				}
 
-				return decryptedPassword;
+				return result;
 			}
-			set {
-				if (string.IsNullOrEmpty(value)) {
-					ASF.ArchiLogger.LogNullError(nameof(value));
 
-					return;
+			set {
+				if (!string.IsNullOrEmpty(value) && (PasswordFormat != ArchiCryptoHelper.ECryptoMethod.PlainText)) {
+					value = ArchiCryptoHelper.Encrypt(PasswordFormat, value);
 				}
 
-				SteamPassword = PasswordFormat == ArchiCryptoHelper.ECryptoMethod.PlainText ? value : ArchiCryptoHelper.Encrypt(PasswordFormat, value);
+				SteamPassword = value;
 			}
 		}
 
 		internal bool IsSteamLoginSet { get; private set; }
 		internal bool IsSteamParentalCodeSet { get; private set; }
 		internal bool IsSteamPasswordSet { get; private set; }
-		internal bool ShouldSerializeEverything { private get; set; } = true;
+		internal bool ShouldSerializeDefaultValues { private get; set; } = true;
 		internal bool ShouldSerializeHelperProperties { private get; set; } = true;
+		internal bool ShouldSerializeSensitiveDetails { private get; set; }
 
 		[JsonProperty]
 		internal string SteamLogin {
-			get => _SteamLogin;
+			get => BackingSteamLogin;
 
 			set {
 				IsSteamLoginSet = true;
-				_SteamLogin = value;
+				BackingSteamLogin = value;
 			}
 		}
 
-		[JsonProperty(Required = Required.DisallowNull)]
-		internal ulong SteamMasterClanID { get; private set; } = DefaultSteamMasterClanID;
-
 		[JsonProperty]
 		internal string SteamParentalCode {
-			get => _SteamParentalCode;
+			get => BackingSteamParentalCode;
 
 			set {
 				IsSteamParentalCodeSet = true;
-				_SteamParentalCode = value;
+				BackingSteamParentalCode = value;
 			}
 		}
 
 		[JsonProperty]
 		internal string SteamPassword {
-			get => _SteamPassword;
+			get => BackingSteamPassword;
 
 			set {
 				IsSteamPasswordSet = true;
-				_SteamPassword = value;
+				BackingSteamPassword = value;
 			}
 		}
 
-		private string _SteamLogin = DefaultSteamLogin;
-		private string _SteamParentalCode = DefaultSteamParentalCode;
-		private string _SteamPassword = DefaultSteamPassword;
-		private bool ShouldSerializeSensitiveDetails = true;
+		private string BackingSteamLogin = DefaultSteamLogin;
+		private string BackingSteamParentalCode = DefaultSteamParentalCode;
+		private string BackingSteamPassword = DefaultSteamPassword;
 
 		[JsonProperty(PropertyName = SharedInfo.UlongCompatibilityStringPrefix + nameof(SteamMasterClanID), Required = Required.DisallowNull)]
-		[NotNull]
+		[JetBrains.Annotations.NotNull]
 		private string SSteamMasterClanID {
 			get => SteamMasterClanID.ToString();
 
@@ -243,34 +244,31 @@ namespace ArchiSteamFarm {
 			}
 		}
 
+		[JsonConstructor]
+		private BotConfig() { }
+
 		internal (bool Valid, string ErrorMessage) CheckValidation() {
 			if (BotBehaviour > EBotBehaviour.All) {
 				return (false, string.Format(Strings.ErrorConfigPropertyInvalid, nameof(BotBehaviour), BotBehaviour));
 			}
 
-			foreach (EFarmingOrder farmingOrder in FarmingOrders) {
-				if (!Enum.IsDefined(typeof(EFarmingOrder), farmingOrder)) {
-					return (false, string.Format(Strings.ErrorConfigPropertyInvalid, nameof(FarmingOrders), farmingOrder));
-				}
+			foreach (EFarmingOrder farmingOrder in FarmingOrders.Where(farmingOrder => !Enum.IsDefined(typeof(EFarmingOrder), farmingOrder))) {
+				return (false, string.Format(Strings.ErrorConfigPropertyInvalid, nameof(FarmingOrders), farmingOrder));
 			}
 
 			if (GamesPlayedWhileIdle.Count > ArchiHandler.MaxGamesPlayedConcurrently) {
 				return (false, string.Format(Strings.ErrorConfigPropertyInvalid, nameof(GamesPlayedWhileIdle), GamesPlayedWhileIdle.Count + " > " + ArchiHandler.MaxGamesPlayedConcurrently));
 			}
 
-			foreach (Steam.Asset.EType lootableType in LootableTypes) {
-				if (!Enum.IsDefined(typeof(Steam.Asset.EType), lootableType)) {
-					return (false, string.Format(Strings.ErrorConfigPropertyInvalid, nameof(LootableTypes), lootableType));
-				}
+			foreach (Steam.Asset.EType lootableType in LootableTypes.Where(lootableType => !Enum.IsDefined(typeof(Steam.Asset.EType), lootableType))) {
+				return (false, string.Format(Strings.ErrorConfigPropertyInvalid, nameof(LootableTypes), lootableType));
 			}
 
-			foreach (Steam.Asset.EType matchableType in MatchableTypes) {
-				if (!Enum.IsDefined(typeof(Steam.Asset.EType), matchableType)) {
-					return (false, string.Format(Strings.ErrorConfigPropertyInvalid, nameof(MatchableTypes), matchableType));
-				}
+			foreach (Steam.Asset.EType matchableType in MatchableTypes.Where(matchableType => !Enum.IsDefined(typeof(Steam.Asset.EType), matchableType))) {
+				return (false, string.Format(Strings.ErrorConfigPropertyInvalid, nameof(MatchableTypes), matchableType));
 			}
 
-			if ((OnlineStatus < EPersonaState.Offline) || (OnlineStatus >= EPersonaState.Max)) {
+			if (!Enum.IsDefined(typeof(EPersonaState), OnlineStatus)) {
 				return (false, string.Format(Strings.ErrorConfigPropertyInvalid, nameof(OnlineStatus), OnlineStatus));
 			}
 
@@ -286,12 +284,18 @@ namespace ArchiSteamFarm {
 				return (false, string.Format(Strings.ErrorConfigPropertyInvalid, nameof(SteamMasterClanID), SteamMasterClanID));
 			}
 
-			if (!string.IsNullOrEmpty(SteamParentalCode) && (SteamParentalCode != "0") && (SteamParentalCode.Length != 4)) {
+			if (!string.IsNullOrEmpty(SteamParentalCode) && (SteamParentalCode != "0") && (SteamParentalCode.Length != SteamParentalCodeLength)) {
 				return (false, string.Format(Strings.ErrorConfigPropertyInvalid, nameof(SteamParentalCode), SteamParentalCode));
 			}
 
-			foreach (EPermission permission in SteamUserPermissions.Values.Where(permission => !Enum.IsDefined(typeof(EPermission), permission))) {
-				return (false, string.Format(Strings.ErrorConfigPropertyInvalid, nameof(SteamUserPermissions), permission));
+			foreach ((ulong steamID, EPermission permission) in SteamUserPermissions) {
+				if ((steamID == 0) || !new SteamID(steamID).IsIndividualAccount) {
+					return (false, string.Format(Strings.ErrorConfigPropertyInvalid, nameof(SteamUserPermissions), steamID));
+				}
+
+				if (!Enum.IsDefined(typeof(EPermission), permission)) {
+					return (false, string.Format(Strings.ErrorConfigPropertyInvalid, nameof(SteamUserPermissions), permission));
+				}
 			}
 
 			return TradingPreferences <= ETradingPreferences.All ? (true, null) : (false, string.Format(Strings.ErrorConfigPropertyInvalid, nameof(TradingPreferences), TradingPreferences));
@@ -312,7 +316,15 @@ namespace ArchiSteamFarm {
 			BotConfig botConfig;
 
 			try {
-				botConfig = JsonConvert.DeserializeObject<BotConfig>(await RuntimeCompatibility.File.ReadAllTextAsync(filePath).ConfigureAwait(false));
+				string json = await RuntimeCompatibility.File.ReadAllTextAsync(filePath).ConfigureAwait(false);
+
+				if (string.IsNullOrEmpty(json)) {
+					ASF.ArchiLogger.LogGenericError(string.Format(Strings.ErrorIsEmpty, nameof(json)));
+
+					return null;
+				}
+
+				botConfig = JsonConvert.DeserializeObject<BotConfig>(json);
 			} catch (Exception e) {
 				ASF.ArchiLogger.LogGenericException(e);
 
@@ -332,9 +344,6 @@ namespace ArchiSteamFarm {
 
 				return null;
 			}
-
-			botConfig.ShouldSerializeEverything = false;
-			botConfig.ShouldSerializeSensitiveDetails = false;
 
 			return botConfig;
 		}
@@ -370,26 +379,19 @@ namespace ArchiSteamFarm {
 			return true;
 		}
 
-		[PublicAPI]
-		public enum EPermission : byte {
-			None,
-			FamilySharing,
-			Operator,
-			Master
-		}
-
 		[Flags]
-		internal enum EBotBehaviour : byte {
+		public enum EBotBehaviour : byte {
 			None = 0,
 			RejectInvalidFriendInvites = 1,
 			RejectInvalidTrades = 2,
 			RejectInvalidGroupInvites = 4,
 			DismissInventoryNotifications = 8,
 			MarkReceivedMessagesAsRead = 16,
-			All = RejectInvalidFriendInvites | RejectInvalidTrades | RejectInvalidGroupInvites | DismissInventoryNotifications | MarkReceivedMessagesAsRead
+			MarkBotMessagesAsRead = 32,
+			All = RejectInvalidFriendInvites | RejectInvalidTrades | RejectInvalidGroupInvites | DismissInventoryNotifications | MarkReceivedMessagesAsRead | MarkBotMessagesAsRead
 		}
 
-		internal enum EFarmingOrder : byte {
+		public enum EFarmingOrder : byte {
 			Unordered,
 			AppIDsAscending,
 			AppIDsDescending,
@@ -408,17 +410,25 @@ namespace ArchiSteamFarm {
 			MarketableDescending
 		}
 
+		public enum EPermission : byte {
+			None,
+			FamilySharing,
+			Operator,
+			Master
+		}
+
 		[Flags]
-		internal enum ERedeemingPreferences : byte {
+		public enum ERedeemingPreferences : byte {
 			None = 0,
 			Forwarding = 1,
 			Distributing = 2,
 			KeepMissingGames = 4,
-			All = Forwarding | Distributing | KeepMissingGames
+			AssumeWalletKeyOnBadActivationCode = 8,
+			All = Forwarding | Distributing | KeepMissingGames | AssumeWalletKeyOnBadActivationCode
 		}
 
 		[Flags]
-		internal enum ETradingPreferences : byte {
+		public enum ETradingPreferences : byte {
 			None = 0,
 			AcceptDonations = 1,
 			SteamTradeMatcher = 2,
@@ -429,36 +439,36 @@ namespace ArchiSteamFarm {
 		}
 
 		// ReSharper disable UnusedMember.Global
-		public bool ShouldSerializeAcceptGifts() => ShouldSerializeEverything || (AcceptGifts != DefaultAcceptGifts);
-		public bool ShouldSerializeAutoSteamSaleEvent() => ShouldSerializeEverything || (AutoSteamSaleEvent != DefaultAutoSteamSaleEvent);
-		public bool ShouldSerializeBotBehaviour() => ShouldSerializeEverything || (BotBehaviour != DefaultBotBehaviour);
-		public bool ShouldSerializeCustomGamePlayedWhileFarming() => ShouldSerializeEverything || (CustomGamePlayedWhileFarming != DefaultCustomGamePlayedWhileFarming);
-		public bool ShouldSerializeCustomGamePlayedWhileIdle() => ShouldSerializeEverything || (CustomGamePlayedWhileIdle != DefaultCustomGamePlayedWhileIdle);
-		public bool ShouldSerializeEnabled() => ShouldSerializeEverything || (Enabled != DefaultEnabled);
-		public bool ShouldSerializeFarmingOrders() => ShouldSerializeEverything || ((FarmingOrders != DefaultFarmingOrders) && !FarmingOrders.SequenceEqual(DefaultFarmingOrders));
-		public bool ShouldSerializeGamesPlayedWhileIdle() => ShouldSerializeEverything || ((GamesPlayedWhileIdle != DefaultGamesPlayedWhileIdle) && !GamesPlayedWhileIdle.SetEquals(DefaultGamesPlayedWhileIdle));
-		public bool ShouldSerializeHoursUntilCardDrops() => ShouldSerializeEverything || (HoursUntilCardDrops != DefaultHoursUntilCardDrops);
-		public bool ShouldSerializeIdlePriorityQueueOnly() => ShouldSerializeEverything || (IdlePriorityQueueOnly != DefaultIdlePriorityQueueOnly);
-		public bool ShouldSerializeIdleRefundableGames() => ShouldSerializeEverything || (IdleRefundableGames != DefaultIdleRefundableGames);
-		public bool ShouldSerializeLootableTypes() => ShouldSerializeEverything || ((LootableTypes != DefaultLootableTypes) && !LootableTypes.SetEquals(DefaultLootableTypes));
-		public bool ShouldSerializeMatchableTypes() => ShouldSerializeEverything || ((MatchableTypes != DefaultMatchableTypes) && !MatchableTypes.SetEquals(DefaultMatchableTypes));
-		public bool ShouldSerializeOnlineStatus() => ShouldSerializeEverything || (OnlineStatus != DefaultOnlineStatus);
-		public bool ShouldSerializePasswordFormat() => ShouldSerializeEverything || (PasswordFormat != DefaultPasswordFormat);
-		public bool ShouldSerializePaused() => ShouldSerializeEverything || (Paused != DefaultPaused);
-		public bool ShouldSerializeRedeemingPreferences() => ShouldSerializeEverything || (RedeemingPreferences != DefaultRedeemingPreferences);
-		public bool ShouldSerializeSendOnFarmingFinished() => ShouldSerializeEverything || (SendOnFarmingFinished != DefaultSendOnFarmingFinished);
-		public bool ShouldSerializeSendTradePeriod() => ShouldSerializeEverything || (SendTradePeriod != DefaultSendTradePeriod);
-		public bool ShouldSerializeShutdownOnFarmingFinished() => ShouldSerializeEverything || (ShutdownOnFarmingFinished != DefaultShutdownOnFarmingFinished);
-		public bool ShouldSerializeSSteamMasterClanID() => ShouldSerializeEverything || (ShouldSerializeHelperProperties && (SteamMasterClanID != DefaultSteamMasterClanID));
-		public bool ShouldSerializeSteamLogin() => ShouldSerializeSensitiveDetails && (ShouldSerializeEverything || (SteamLogin != DefaultSteamLogin));
-		public bool ShouldSerializeSteamMasterClanID() => ShouldSerializeEverything || (SteamMasterClanID != DefaultSteamMasterClanID);
-		public bool ShouldSerializeSteamParentalCode() => ShouldSerializeSensitiveDetails && (ShouldSerializeEverything || (SteamParentalCode != DefaultSteamParentalCode));
-		public bool ShouldSerializeSteamPassword() => ShouldSerializeSensitiveDetails && (ShouldSerializeEverything || (SteamPassword != DefaultSteamPassword));
-		public bool ShouldSerializeSteamTradeToken() => ShouldSerializeEverything || (SteamTradeToken != DefaultSteamTradeToken);
-		public bool ShouldSerializeSteamUserPermissions() => ShouldSerializeEverything || ((SteamUserPermissions != DefaultSteamUserPermissions) && ((SteamUserPermissions.Count != DefaultSteamUserPermissions.Count) || SteamUserPermissions.Except(DefaultSteamUserPermissions).Any()));
-		public bool ShouldSerializeTradingPreferences() => ShouldSerializeEverything || (TradingPreferences != DefaultTradingPreferences);
-		public bool ShouldSerializeTransferableTypes() => ShouldSerializeEverything || ((TransferableTypes != DefaultTransferableTypes) && !TransferableTypes.SetEquals(DefaultTransferableTypes));
-		public bool ShouldSerializeUseLoginKeys() => ShouldSerializeEverything || (UseLoginKeys != DefaultUseLoginKeys);
+		public bool ShouldSerializeAcceptGifts() => ShouldSerializeDefaultValues || (AcceptGifts != DefaultAcceptGifts);
+		public bool ShouldSerializeAutoSteamSaleEvent() => ShouldSerializeDefaultValues || (AutoSteamSaleEvent != DefaultAutoSteamSaleEvent);
+		public bool ShouldSerializeBotBehaviour() => ShouldSerializeDefaultValues || (BotBehaviour != DefaultBotBehaviour);
+		public bool ShouldSerializeCustomGamePlayedWhileFarming() => ShouldSerializeDefaultValues || (CustomGamePlayedWhileFarming != DefaultCustomGamePlayedWhileFarming);
+		public bool ShouldSerializeCustomGamePlayedWhileIdle() => ShouldSerializeDefaultValues || (CustomGamePlayedWhileIdle != DefaultCustomGamePlayedWhileIdle);
+		public bool ShouldSerializeEnabled() => ShouldSerializeDefaultValues || (Enabled != DefaultEnabled);
+		public bool ShouldSerializeFarmingOrders() => ShouldSerializeDefaultValues || ((FarmingOrders != DefaultFarmingOrders) && !FarmingOrders.SequenceEqual(DefaultFarmingOrders));
+		public bool ShouldSerializeGamesPlayedWhileIdle() => ShouldSerializeDefaultValues || ((GamesPlayedWhileIdle != DefaultGamesPlayedWhileIdle) && !GamesPlayedWhileIdle.SetEquals(DefaultGamesPlayedWhileIdle));
+		public bool ShouldSerializeHoursUntilCardDrops() => ShouldSerializeDefaultValues || (HoursUntilCardDrops != DefaultHoursUntilCardDrops);
+		public bool ShouldSerializeIdlePriorityQueueOnly() => ShouldSerializeDefaultValues || (IdlePriorityQueueOnly != DefaultIdlePriorityQueueOnly);
+		public bool ShouldSerializeIdleRefundableGames() => ShouldSerializeDefaultValues || (IdleRefundableGames != DefaultIdleRefundableGames);
+		public bool ShouldSerializeLootableTypes() => ShouldSerializeDefaultValues || ((LootableTypes != DefaultLootableTypes) && !LootableTypes.SetEquals(DefaultLootableTypes));
+		public bool ShouldSerializeMatchableTypes() => ShouldSerializeDefaultValues || ((MatchableTypes != DefaultMatchableTypes) && !MatchableTypes.SetEquals(DefaultMatchableTypes));
+		public bool ShouldSerializeOnlineStatus() => ShouldSerializeDefaultValues || (OnlineStatus != DefaultOnlineStatus);
+		public bool ShouldSerializePasswordFormat() => ShouldSerializeDefaultValues || (PasswordFormat != DefaultPasswordFormat);
+		public bool ShouldSerializePaused() => ShouldSerializeDefaultValues || (Paused != DefaultPaused);
+		public bool ShouldSerializeRedeemingPreferences() => ShouldSerializeDefaultValues || (RedeemingPreferences != DefaultRedeemingPreferences);
+		public bool ShouldSerializeSendOnFarmingFinished() => ShouldSerializeDefaultValues || (SendOnFarmingFinished != DefaultSendOnFarmingFinished);
+		public bool ShouldSerializeSendTradePeriod() => ShouldSerializeDefaultValues || (SendTradePeriod != DefaultSendTradePeriod);
+		public bool ShouldSerializeShutdownOnFarmingFinished() => ShouldSerializeDefaultValues || (ShutdownOnFarmingFinished != DefaultShutdownOnFarmingFinished);
+		public bool ShouldSerializeSSteamMasterClanID() => ShouldSerializeDefaultValues || (ShouldSerializeHelperProperties && (SteamMasterClanID != DefaultSteamMasterClanID));
+		public bool ShouldSerializeSteamLogin() => ShouldSerializeSensitiveDetails && (ShouldSerializeDefaultValues || (SteamLogin != DefaultSteamLogin));
+		public bool ShouldSerializeSteamMasterClanID() => ShouldSerializeDefaultValues || (SteamMasterClanID != DefaultSteamMasterClanID);
+		public bool ShouldSerializeSteamParentalCode() => ShouldSerializeSensitiveDetails && (ShouldSerializeDefaultValues || (SteamParentalCode != DefaultSteamParentalCode));
+		public bool ShouldSerializeSteamPassword() => ShouldSerializeSensitiveDetails && (ShouldSerializeDefaultValues || (SteamPassword != DefaultSteamPassword));
+		public bool ShouldSerializeSteamTradeToken() => ShouldSerializeDefaultValues || (SteamTradeToken != DefaultSteamTradeToken);
+		public bool ShouldSerializeSteamUserPermissions() => ShouldSerializeDefaultValues || ((SteamUserPermissions != DefaultSteamUserPermissions) && ((SteamUserPermissions.Count != DefaultSteamUserPermissions.Count) || SteamUserPermissions.Except(DefaultSteamUserPermissions).Any()));
+		public bool ShouldSerializeTradingPreferences() => ShouldSerializeDefaultValues || (TradingPreferences != DefaultTradingPreferences);
+		public bool ShouldSerializeTransferableTypes() => ShouldSerializeDefaultValues || ((TransferableTypes != DefaultTransferableTypes) && !TransferableTypes.SetEquals(DefaultTransferableTypes));
+		public bool ShouldSerializeUseLoginKeys() => ShouldSerializeDefaultValues || (UseLoginKeys != DefaultUseLoginKeys);
 
 		// ReSharper restore UnusedMember.Global
 	}

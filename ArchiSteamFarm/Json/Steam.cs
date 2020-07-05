@@ -1,18 +1,18 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
 // /_/   \_\|_|   \___||_| |_||_||____/  \__|\___| \__,_||_| |_| |_||_|   \__,_||_|   |_| |_| |_|
-// 
-// Copyright 2015-2019 Łukasz "JustArchi" Domeradzki
+// |
+// Copyright 2015-2020 Łukasz "JustArchi" Domeradzki
 // Contact: JustArchi@JustArchi.net
-// 
+// |
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+// |
 // http://www.apache.org/licenses/LICENSE-2.0
-// 
+// |
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,12 +21,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using AngleSharp.Dom;
 using ArchiSteamFarm.Localization;
-using HtmlAgilityPack;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using SteamKit2;
 
 namespace ArchiSteamFarm.Json {
@@ -37,34 +39,62 @@ namespace ArchiSteamFarm.Json {
 			public const uint SteamAppID = 753;
 
 			[PublicAPI]
-			public const uint SteamCommunityContextID = 6;
+			public const ulong SteamCommunityContextID = 6;
 
+			[JsonIgnore]
+			[PublicAPI]
+			public ImmutableDictionary<string, JToken> AdditionalProperties { get; internal set; }
+
+			[JsonIgnore]
 			[PublicAPI]
 			public uint Amount { get; internal set; }
 
 			[JsonProperty(PropertyName = "appid", Required = Required.DisallowNull)]
 			public uint AppID { get; private set; }
 
+			[JsonIgnore]
 			[PublicAPI]
 			public ulong AssetID { get; private set; }
 
+			[JsonIgnore]
 			[PublicAPI]
 			public ulong ClassID { get; private set; }
 
+			[JsonIgnore]
 			[PublicAPI]
-			public uint ContextID { get; private set; }
+			public ulong ContextID { get; private set; }
 
+			[JsonIgnore]
+			[PublicAPI]
+			public ulong InstanceID { get; private set; }
+
+			[JsonIgnore]
+			[PublicAPI]
+			public bool Marketable { get; internal set; }
+
+			[JsonIgnore]
+			[PublicAPI]
+			public ERarity Rarity { get; internal set; }
+
+			[JsonIgnore]
 			[PublicAPI]
 			public uint RealAppID { get; internal set; }
 
+			[JsonIgnore]
+			[PublicAPI]
+			public ImmutableHashSet<Tag> Tags { get; internal set; }
+
+			[JsonIgnore]
 			[PublicAPI]
 			public bool Tradable { get; internal set; }
 
+			[JsonIgnore]
 			[PublicAPI]
 			public EType Type { get; internal set; }
 
+#pragma warning disable IDE0051
 			[JsonProperty(PropertyName = "amount", Required = Required.Always)]
-			[NotNull]
+			[JetBrains.Annotations.NotNull]
 			private string AmountText {
 				get => Amount.ToString();
 
@@ -84,9 +114,11 @@ namespace ArchiSteamFarm.Json {
 					Amount = amount;
 				}
 			}
+#pragma warning restore IDE0051
 
+#pragma warning disable IDE0052
 			[JsonProperty(PropertyName = "assetid", Required = Required.DisallowNull)]
-			[NotNull]
+			[JetBrains.Annotations.NotNull]
 			private string AssetIDText {
 				get => AssetID.ToString();
 
@@ -106,12 +138,12 @@ namespace ArchiSteamFarm.Json {
 					AssetID = assetID;
 				}
 			}
+#pragma warning restore IDE0052
 
+#pragma warning disable IDE0051
 			[JsonProperty(PropertyName = "classid", Required = Required.DisallowNull)]
-			[NotNull]
+			[JetBrains.Annotations.NotNull]
 			private string ClassIDText {
-				get => ClassID.ToString();
-
 				set {
 					if (string.IsNullOrEmpty(value)) {
 						ASF.ArchiLogger.LogNullError(nameof(value));
@@ -126,9 +158,11 @@ namespace ArchiSteamFarm.Json {
 					ClassID = classID;
 				}
 			}
+#pragma warning restore IDE0051
 
+#pragma warning disable IDE0051
 			[JsonProperty(PropertyName = "contextid", Required = Required.DisallowNull)]
-			[NotNull]
+			[JetBrains.Annotations.NotNull]
 			private string ContextIDText {
 				get => ContextID.ToString();
 
@@ -139,7 +173,7 @@ namespace ArchiSteamFarm.Json {
 						return;
 					}
 
-					if (!uint.TryParse(value, out uint contextID) || (contextID == 0)) {
+					if (!ulong.TryParse(value, out ulong contextID) || (contextID == 0)) {
 						ASF.ArchiLogger.LogNullError(nameof(contextID));
 
 						return;
@@ -148,16 +182,38 @@ namespace ArchiSteamFarm.Json {
 					ContextID = contextID;
 				}
 			}
+#pragma warning restore IDE0051
 
+#pragma warning disable IDE0051
 			[JsonProperty(PropertyName = "id", Required = Required.DisallowNull)]
-			[NotNull]
+			[JetBrains.Annotations.NotNull]
 			private string IDText {
-				get => AssetIDText;
 				set => AssetIDText = value;
 			}
+#pragma warning restore IDE0051
+
+#pragma warning disable IDE0051
+			[JsonProperty(PropertyName = "instanceid", Required = Required.DisallowNull)]
+			[JetBrains.Annotations.NotNull]
+			private string InstanceIDText {
+				set {
+					if (string.IsNullOrEmpty(value)) {
+						return;
+					}
+
+					if (!ulong.TryParse(value, out ulong instanceID)) {
+						ASF.ArchiLogger.LogNullError(nameof(instanceID));
+
+						return;
+					}
+
+					InstanceID = instanceID;
+				}
+			}
+#pragma warning restore IDE0051
 
 			// Constructed from trades being received or plugins
-			public Asset(uint appID, uint contextID, ulong classID, uint amount, uint realAppID = 0, EType type = EType.Unknown) {
+			public Asset(uint appID, ulong contextID, ulong classID, uint amount, ulong instanceID = 0, ulong assetID = 0, bool marketable = true, bool tradable = true, ImmutableHashSet<Tag> tags = null, uint realAppID = 0, EType type = EType.Unknown, ERarity rarity = ERarity.Unknown) {
 				if ((appID == 0) || (contextID == 0) || (classID == 0) || (amount == 0)) {
 					throw new ArgumentNullException(nameof(appID) + " || " + nameof(contextID) + " || " + nameof(classID) + " || " + nameof(amount));
 				}
@@ -166,12 +222,53 @@ namespace ArchiSteamFarm.Json {
 				ContextID = contextID;
 				ClassID = classID;
 				Amount = amount;
+				InstanceID = instanceID;
+				AssetID = assetID;
+				Marketable = marketable;
+				Tradable = tradable;
 				RealAppID = realAppID;
 				Type = type;
+				Rarity = rarity;
+
+				if ((tags != null) && (tags.Count > 0)) {
+					Tags = tags;
+				}
 			}
 
 			[JsonConstructor]
 			private Asset() { }
+
+			[JetBrains.Annotations.NotNull]
+			internal Asset CreateShallowCopy() => (Asset) MemberwiseClone();
+
+			public sealed class Tag {
+				[JsonProperty(PropertyName = "category", Required = Required.Always)]
+				[PublicAPI]
+				public readonly string Identifier;
+
+				[JsonProperty(PropertyName = "internal_name", Required = Required.Always)]
+				[PublicAPI]
+				public readonly string Value;
+
+				internal Tag([JetBrains.Annotations.NotNull] string identifier, [JetBrains.Annotations.NotNull] string value) {
+					if (string.IsNullOrEmpty(identifier) || string.IsNullOrEmpty(value)) {
+						throw new ArgumentNullException(nameof(identifier) + " || " + nameof(value));
+					}
+
+					Identifier = identifier;
+					Value = value;
+				}
+
+				[JsonConstructor]
+				private Tag() { }
+			}
+
+			public enum ERarity : byte {
+				Unknown,
+				Common,
+				Uncommon,
+				Rare
+			}
 
 			public enum EType : byte {
 				Unknown,
@@ -182,7 +279,13 @@ namespace ArchiSteamFarm.Json {
 				TradingCard,
 				SteamGems,
 				SaleItem,
-				Consumable
+				Consumable,
+				ProfileModifier,
+				Sticker,
+				ChatEffect,
+				MiniProfileBackground,
+				AvatarProfileFrame,
+				AnimatedAvatar
 			}
 		}
 
@@ -201,6 +304,7 @@ namespace ArchiSteamFarm.Json {
 			internal ulong TradeOfferID { get; private set; }
 			internal EType Type { get; private set; }
 
+#pragma warning disable IDE0051
 			[JsonProperty(PropertyName = "html", Required = Required.DisallowNull)]
 			private string HTML {
 				set {
@@ -210,7 +314,7 @@ namespace ArchiSteamFarm.Json {
 						return;
 					}
 
-					HtmlDocument htmlDocument = WebBrowser.StringToHtmlDocument(value);
+					using IDocument htmlDocument = WebBrowser.StringToHtmlDocument(value).Result;
 
 					if (htmlDocument == null) {
 						ASF.ArchiLogger.LogNullError(nameof(htmlDocument));
@@ -218,10 +322,10 @@ namespace ArchiSteamFarm.Json {
 						return;
 					}
 
-					if (htmlDocument.DocumentNode.SelectSingleNode("//div[@class='mobileconf_trade_area']") != null) {
+					if (htmlDocument.SelectSingleNode("//div[@class='mobileconf_trade_area']") != null) {
 						Type = EType.Trade;
 
-						HtmlNode tradeOfferNode = htmlDocument.DocumentNode.SelectSingleNode("//div[@class='tradeoffer']");
+						IElement tradeOfferNode = htmlDocument.SelectSingleNode("//div[@class='tradeoffer']");
 
 						if (tradeOfferNode == null) {
 							ASF.ArchiLogger.LogNullError(nameof(tradeOfferNode));
@@ -229,7 +333,7 @@ namespace ArchiSteamFarm.Json {
 							return;
 						}
 
-						string idText = tradeOfferNode.GetAttributeValue("id", null);
+						string idText = tradeOfferNode.GetAttributeValue("id");
 
 						if (string.IsNullOrEmpty(idText)) {
 							ASF.ArchiLogger.LogNullError(nameof(idText));
@@ -262,7 +366,7 @@ namespace ArchiSteamFarm.Json {
 						}
 
 						TradeOfferID = tradeOfferID;
-					} else if (htmlDocument.DocumentNode.SelectSingleNode("//div[@class='mobileconf_listing_prices']") != null) {
+					} else if (htmlDocument.SelectSingleNode("//div[@class='mobileconf_listing_prices']") != null) {
 						Type = EType.Market;
 					} else {
 						// Normally this should be reported, but under some specific circumstances we might actually receive this one
@@ -270,6 +374,7 @@ namespace ArchiSteamFarm.Json {
 					}
 				}
 			}
+#pragma warning restore IDE0051
 
 			[JsonConstructor]
 			private ConfirmationDetails() { }
@@ -283,7 +388,8 @@ namespace ArchiSteamFarm.Json {
 				Market,
 
 				// We're missing information about definition of number 4 type
-				ChangePhoneNumber = 5
+				PhoneNumberChange = 5,
+				AccountRecovery = 6
 			}
 		}
 
@@ -294,35 +400,6 @@ namespace ArchiSteamFarm.Json {
 
 			[JsonConstructor]
 			protected EResultResponse() { }
-		}
-
-		[SuppressMessage("ReSharper", "ClassCannotBeInstantiated")]
-		public class NumberResponse {
-			[PublicAPI]
-			public bool Success { get; private set; }
-
-			[JsonProperty(PropertyName = "success", Required = Required.Always)]
-			private byte SuccessNumber {
-				set {
-					switch (value) {
-						case 0:
-							Success = false;
-
-							break;
-						case 1:
-							Success = true;
-
-							break;
-						default:
-							ASF.ArchiLogger.LogGenericError(string.Format(Strings.WarningUnknownValuePleaseReport, nameof(value), value));
-
-							return;
-					}
-				}
-			}
-
-			[JsonConstructor]
-			protected NumberResponse() { }
 		}
 
 		// REF: https://developer.valvesoftware.com/wiki/Steam_Web_API/IEconService#CEcon_TradeOffer
@@ -347,7 +424,7 @@ namespace ArchiSteamFarm.Json {
 
 			// Constructed from trades being received
 			internal TradeOffer(ulong tradeOfferID, uint otherSteamID3, ETradeOfferState state) {
-				if ((tradeOfferID == 0) || (otherSteamID3 == 0) || (state == ETradeOfferState.Unknown)) {
+				if ((tradeOfferID == 0) || (otherSteamID3 == 0) || !Enum.IsDefined(typeof(ETradeOfferState), state)) {
 					throw new ArgumentNullException(nameof(tradeOfferID) + " || " + nameof(otherSteamID3) + " || " + nameof(state));
 				}
 
@@ -356,7 +433,8 @@ namespace ArchiSteamFarm.Json {
 				State = state;
 			}
 
-			internal bool IsValidSteamItemsRequest(IReadOnlyCollection<Asset.EType> acceptedTypes) {
+			[PublicAPI]
+			public bool IsValidSteamItemsRequest(IReadOnlyCollection<Asset.EType> acceptedTypes) {
 				if ((acceptedTypes == null) || (acceptedTypes.Count == 0)) {
 					ASF.ArchiLogger.LogNullError(nameof(acceptedTypes));
 
@@ -365,31 +443,15 @@ namespace ArchiSteamFarm.Json {
 
 				return ItemsToGive.All(item => (item.AppID == Asset.SteamAppID) && (item.ContextID == Asset.SteamCommunityContextID) && acceptedTypes.Contains(item.Type));
 			}
-
-			[PublicAPI]
-			public enum ETradeOfferState : byte {
-				Unknown,
-				Invalid,
-				Active,
-				Accepted,
-				Countered,
-				Expired,
-				Canceled,
-				Declined,
-				InvalidItems,
-				EmailPending,
-				EmailCanceled,
-				OnHold
-			}
 		}
 
 		[SuppressMessage("ReSharper", "ClassCannotBeInstantiated")]
-		internal sealed class InventoryResponse : NumberResponse {
+		internal sealed class InventoryResponse : EResultResponse {
 			[JsonProperty(PropertyName = "assets", Required = Required.DisallowNull)]
-			internal readonly HashSet<Asset> Assets;
+			internal readonly ImmutableHashSet<Asset> Assets;
 
 			[JsonProperty(PropertyName = "descriptions", Required = Required.DisallowNull)]
-			internal readonly HashSet<Description> Descriptions;
+			internal readonly ImmutableHashSet<Description> Descriptions;
 
 			[JsonProperty(PropertyName = "error", Required = Required.DisallowNull)]
 			internal readonly string Error;
@@ -400,6 +462,7 @@ namespace ArchiSteamFarm.Json {
 			internal ulong LastAssetID { get; private set; }
 			internal bool MoreItems { get; private set; }
 
+#pragma warning disable IDE0051
 			[JsonProperty(PropertyName = "last_assetid", Required = Required.DisallowNull)]
 			private string LastAssetIDText {
 				set {
@@ -418,28 +481,166 @@ namespace ArchiSteamFarm.Json {
 					LastAssetID = lastAssetID;
 				}
 			}
+#pragma warning restore IDE0051
 
+#pragma warning disable IDE0051
 			[JsonProperty(PropertyName = "more_items", Required = Required.DisallowNull)]
 			private byte MoreItemsNumber {
 				set => MoreItems = value > 0;
 			}
+#pragma warning restore IDE0051
 
 			[JsonConstructor]
 			private InventoryResponse() { }
 
 			internal sealed class Description {
+				internal Asset.ERarity Rarity {
+					get {
+						if (Tags == null) {
+							return Asset.ERarity.Unknown;
+						}
+
+						foreach (Asset.Tag tag in Tags) {
+							switch (tag.Identifier) {
+								case "droprate":
+									switch (tag.Value) {
+										case "droprate_0":
+											return Asset.ERarity.Common;
+										case "droprate_1":
+											return Asset.ERarity.Uncommon;
+										case "droprate_2":
+											return Asset.ERarity.Rare;
+										default:
+											ASF.ArchiLogger.LogGenericError(string.Format(Strings.WarningUnknownValuePleaseReport, nameof(tag.Value), tag.Value));
+
+											break;
+									}
+
+									break;
+							}
+						}
+
+						return Asset.ERarity.Unknown;
+					}
+				}
+
+				internal uint RealAppID {
+					get {
+						if (Tags == null) {
+							return 0;
+						}
+
+						foreach (Asset.Tag tag in Tags) {
+							switch (tag.Identifier) {
+								case "Game":
+									if ((tag.Value.Length <= 4) || !tag.Value.StartsWith("app_", StringComparison.Ordinal)) {
+										ASF.ArchiLogger.LogGenericError(string.Format(Strings.WarningUnknownValuePleaseReport, nameof(tag.Value), tag.Value));
+
+										break;
+									}
+
+									string appIDText = tag.Value.Substring(4);
+
+									if (!uint.TryParse(appIDText, out uint appID) || (appID == 0)) {
+										ASF.ArchiLogger.LogNullError(nameof(appID));
+
+										break;
+									}
+
+									return appID;
+							}
+						}
+
+						return 0;
+					}
+				}
+
+				internal Asset.EType Type {
+					get {
+						if (Tags == null) {
+							return Asset.EType.Unknown;
+						}
+
+						Asset.EType type = Asset.EType.Unknown;
+
+						foreach (Asset.Tag tag in Tags) {
+							switch (tag.Identifier) {
+								case "cardborder":
+									switch (tag.Value) {
+										case "cardborder_0":
+											return Asset.EType.TradingCard;
+										case "cardborder_1":
+											return Asset.EType.FoilTradingCard;
+										default:
+											ASF.ArchiLogger.LogGenericError(string.Format(Strings.WarningUnknownValuePleaseReport, nameof(tag.Value), tag.Value));
+
+											return Asset.EType.Unknown;
+									}
+								case "item_class":
+									switch (tag.Value) {
+										case "item_class_2":
+											if (type == Asset.EType.Unknown) {
+												// This is a fallback in case we'd have no cardborder available to interpret
+												type = Asset.EType.TradingCard;
+											}
+
+											continue;
+										case "item_class_3":
+											return Asset.EType.ProfileBackground;
+										case "item_class_4":
+											return Asset.EType.Emoticon;
+										case "item_class_5":
+											return Asset.EType.BoosterPack;
+										case "item_class_6":
+											return Asset.EType.Consumable;
+										case "item_class_7":
+											return Asset.EType.SteamGems;
+										case "item_class_8":
+											return Asset.EType.ProfileModifier;
+										case "item_class_10":
+											return Asset.EType.SaleItem;
+										case "item_class_11":
+											return Asset.EType.Sticker;
+										case "item_class_12":
+											return Asset.EType.ChatEffect;
+										case "item_class_13":
+											return Asset.EType.MiniProfileBackground;
+										case "item_class_14":
+											return Asset.EType.AvatarProfileFrame;
+										case "item_class_15":
+											return Asset.EType.AnimatedAvatar;
+										default:
+											ASF.ArchiLogger.LogGenericError(string.Format(Strings.WarningUnknownValuePleaseReport, nameof(tag.Value), tag.Value));
+
+											return Asset.EType.Unknown;
+									}
+							}
+						}
+
+						return type;
+					}
+				}
+
+				[JsonExtensionData]
+				internal Dictionary<string, JToken> AdditionalProperties {
+					get;
+					[UsedImplicitly]
+					set;
+				}
+
 				[JsonProperty(PropertyName = "appid", Required = Required.Always)]
-				internal readonly uint AppID;
+				internal uint AppID { get; set; }
 
-				[JsonProperty(PropertyName = "market_hash_name", Required = Required.Always)]
-				internal readonly string MarketHashName;
+				internal ulong ClassID { get; set; }
+				internal ulong InstanceID { get; set; }
+				internal bool Marketable { get; set; }
 
-				[JsonProperty(PropertyName = "type", Required = Required.Always)]
-				internal readonly string Type;
+				[JsonProperty(PropertyName = "tags", Required = Required.DisallowNull)]
+				internal ImmutableHashSet<Asset.Tag> Tags { get; set; }
 
-				internal ulong ClassID { get; private set; }
-				internal bool Tradable { get; private set; }
+				internal bool Tradable { get; set; }
 
+#pragma warning disable IDE0051
 				[JsonProperty(PropertyName = "classid", Required = Required.Always)]
 				private string ClassIDText {
 					set {
@@ -458,21 +659,50 @@ namespace ArchiSteamFarm.Json {
 						ClassID = classID;
 					}
 				}
+#pragma warning restore IDE0051
 
+#pragma warning disable IDE0051
+				[JsonProperty(PropertyName = "instanceid", Required = Required.DisallowNull)]
+				private string InstanceIDText {
+					set {
+						if (string.IsNullOrEmpty(value)) {
+							return;
+						}
+
+						if (!ulong.TryParse(value, out ulong instanceID)) {
+							ASF.ArchiLogger.LogNullError(nameof(instanceID));
+
+							return;
+						}
+
+						InstanceID = instanceID;
+					}
+				}
+#pragma warning restore IDE0051
+
+#pragma warning disable IDE0051
+				[JsonProperty(PropertyName = "marketable", Required = Required.Always)]
+				private byte MarketableNumber {
+					set => Marketable = value > 0;
+				}
+#pragma warning restore IDE0051
+
+#pragma warning disable IDE0051
 				[JsonProperty(PropertyName = "tradable", Required = Required.Always)]
 				private byte TradableNumber {
 					set => Tradable = value > 0;
 				}
+#pragma warning restore IDE0051
 
 				[JsonConstructor]
-				private Description() { }
+				internal Description() { }
 			}
 		}
 
 		[SuppressMessage("ReSharper", "ClassCannotBeInstantiated")]
 		internal sealed class NewDiscoveryQueueResponse {
 			[JsonProperty(PropertyName = "queue", Required = Required.Always)]
-			internal readonly HashSet<uint> Queue;
+			internal readonly ImmutableHashSet<uint> Queue;
 
 			[JsonConstructor]
 			private NewDiscoveryQueueResponse() { }
@@ -530,6 +760,7 @@ namespace ArchiSteamFarm.Json {
 
 			internal ulong TradeOfferID { get; private set; }
 
+#pragma warning disable IDE0051
 			[JsonProperty(PropertyName = "tradeofferid", Required = Required.Always)]
 			private string TradeOfferIDText {
 				set {
@@ -548,6 +779,7 @@ namespace ArchiSteamFarm.Json {
 					TradeOfferID = tradeOfferID;
 				}
 			}
+#pragma warning restore IDE0051
 
 			[JsonConstructor]
 			private TradeOfferSendResponse() { }
@@ -562,7 +794,7 @@ namespace ArchiSteamFarm.Json {
 			internal readonly PrivacySettings Settings;
 
 			// Constructed from privacy change request
-			internal UserPrivacy([NotNull] PrivacySettings settings, ECommentPermission commentPermission) {
+			internal UserPrivacy([JetBrains.Annotations.NotNull] PrivacySettings settings, ECommentPermission commentPermission) {
 				Settings = settings ?? throw new ArgumentNullException(nameof(settings));
 				CommentPermission = commentPermission;
 			}
@@ -572,26 +804,26 @@ namespace ArchiSteamFarm.Json {
 
 			internal sealed class PrivacySettings {
 				[JsonProperty(PropertyName = "PrivacyFriendsList", Required = Required.Always)]
-				internal readonly EPrivacySetting FriendsList;
+				internal readonly ArchiHandler.EPrivacySetting FriendsList;
 
 				[JsonProperty(PropertyName = "PrivacyInventory", Required = Required.Always)]
-				internal readonly EPrivacySetting Inventory;
+				internal readonly ArchiHandler.EPrivacySetting Inventory;
 
 				[JsonProperty(PropertyName = "PrivacyInventoryGifts", Required = Required.Always)]
-				internal readonly EPrivacySetting InventoryGifts;
+				internal readonly ArchiHandler.EPrivacySetting InventoryGifts;
 
 				[JsonProperty(PropertyName = "PrivacyOwnedGames", Required = Required.Always)]
-				internal readonly EPrivacySetting OwnedGames;
+				internal readonly ArchiHandler.EPrivacySetting OwnedGames;
 
 				[JsonProperty(PropertyName = "PrivacyPlaytime", Required = Required.Always)]
-				internal readonly EPrivacySetting Playtime;
+				internal readonly ArchiHandler.EPrivacySetting Playtime;
 
 				[JsonProperty(PropertyName = "PrivacyProfile", Required = Required.Always)]
-				internal readonly EPrivacySetting Profile;
+				internal readonly ArchiHandler.EPrivacySetting Profile;
 
 				// Constructed from privacy change request
-				internal PrivacySettings(EPrivacySetting profile, EPrivacySetting ownedGames, EPrivacySetting playtime, EPrivacySetting friendsList, EPrivacySetting inventory, EPrivacySetting inventoryGifts) {
-					if ((profile == EPrivacySetting.Unknown) || (ownedGames == EPrivacySetting.Unknown) || (playtime == EPrivacySetting.Unknown) || (friendsList == EPrivacySetting.Unknown) || (inventory == EPrivacySetting.Unknown) || (inventoryGifts == EPrivacySetting.Unknown)) {
+				internal PrivacySettings(ArchiHandler.EPrivacySetting profile, ArchiHandler.EPrivacySetting ownedGames, ArchiHandler.EPrivacySetting playtime, ArchiHandler.EPrivacySetting friendsList, ArchiHandler.EPrivacySetting inventory, ArchiHandler.EPrivacySetting inventoryGifts) {
+					if ((profile == ArchiHandler.EPrivacySetting.Unknown) || (ownedGames == ArchiHandler.EPrivacySetting.Unknown) || (playtime == ArchiHandler.EPrivacySetting.Unknown) || (friendsList == ArchiHandler.EPrivacySetting.Unknown) || (inventory == ArchiHandler.EPrivacySetting.Unknown) || (inventoryGifts == ArchiHandler.EPrivacySetting.Unknown)) {
 						throw new ArgumentNullException(nameof(profile) + " || " + nameof(ownedGames) + " || " + nameof(playtime) + " || " + nameof(friendsList) + " || " + nameof(inventory) + " || " + nameof(inventoryGifts));
 					}
 
@@ -605,13 +837,6 @@ namespace ArchiSteamFarm.Json {
 
 				[JsonConstructor]
 				private PrivacySettings() { }
-
-				internal enum EPrivacySetting : byte {
-					Unknown,
-					Private,
-					FriendsOnly,
-					Public
-				}
 			}
 
 			internal enum ECommentPermission : byte {

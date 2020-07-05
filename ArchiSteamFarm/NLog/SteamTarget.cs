@@ -1,18 +1,18 @@
-﻿//     _                _      _  ____   _                           _____
+//     _                _      _  ____   _                           _____
 //    / \    _ __  ___ | |__  (_)/ ___| | |_  ___   __ _  _ __ ___  |  ___|__ _  _ __  _ __ ___
 //   / _ \  | '__|/ __|| '_ \ | |\___ \ | __|/ _ \ / _` || '_ ` _ \ | |_  / _` || '__|| '_ ` _ \
 //  / ___ \ | |  | (__ | | | || | ___) || |_|  __/| (_| || | | | | ||  _|| (_| || |   | | | | | |
 // /_/   \_\|_|   \___||_| |_||_||____/  \__|\___| \__,_||_| |_| |_||_|   \__,_||_|   |_| |_| |_|
-// 
-// Copyright 2015-2019 Łukasz "JustArchi" Domeradzki
+// |
+// Copyright 2015-2020 Łukasz "JustArchi" Domeradzki
 // Contact: JustArchi@JustArchi.net
-// 
+// |
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+// |
 // http://www.apache.org/licenses/LICENSE-2.0
-// 
+// |
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,6 +22,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
+using ArchiSteamFarm.Localization;
 using JetBrains.Annotations;
 using NLog;
 using NLog.Config;
@@ -60,7 +61,7 @@ namespace ArchiSteamFarm.NLog {
 
 			base.Write(logEvent);
 
-			if (SteamID == 0) {
+			if ((SteamID == 0) || (Bot.Bots == null) || (Bot.Bots.Count == 0)) {
 				return;
 			}
 
@@ -73,7 +74,9 @@ namespace ArchiSteamFarm.NLog {
 			Bot bot = null;
 
 			if (!string.IsNullOrEmpty(BotName)) {
-				if (!Bot.Bots.TryGetValue(BotName, out bot) || !bot.IsConnectedAndLoggedOn) {
+				bot = Bot.GetBot(BotName);
+
+				if (bot?.IsConnectedAndLoggedOn != true) {
 					return;
 				}
 			}
@@ -100,7 +103,9 @@ namespace ArchiSteamFarm.NLog {
 				}
 			}
 
-			await bot.SendMessage(ChatGroupID, SteamID, message).ConfigureAwait(false);
+			if (!await bot.SendMessage(ChatGroupID, SteamID, message).ConfigureAwait(false)) {
+				bot.ArchiLogger.LogGenericTrace(string.Format(Strings.WarningFailedWithError, nameof(Bot.SendMessage)));
+			}
 		}
 
 		private async Task SendPrivateMessage(string message, Bot bot = null) {
@@ -118,7 +123,9 @@ namespace ArchiSteamFarm.NLog {
 				}
 			}
 
-			await bot.SendMessage(SteamID, message).ConfigureAwait(false);
+			if (!await bot.SendMessage(SteamID, message).ConfigureAwait(false)) {
+				bot.ArchiLogger.LogGenericTrace(string.Format(Strings.WarningFailedWithError, nameof(Bot.SendMessage)));
+			}
 		}
 	}
 }

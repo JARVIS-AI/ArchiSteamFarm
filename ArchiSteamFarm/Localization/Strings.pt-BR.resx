@@ -118,7 +118,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="AcceptingTrade" xml:space="preserve">
-    <value>Aceitando a troca: {0}</value>
+    <value>Aceitando troca: {0}</value>
     <comment>{0} will be replaced by trade number</comment>
   </data>
   <data name="AutoUpdateCheckInfo" xml:space="preserve">
@@ -148,7 +148,7 @@ StackTrace:
     <value>Saindo com um código de erro diferente de zero!</value>
   </data>
   <data name="ErrorFailingRequest" xml:space="preserve">
-    <value>Pedido falhou em: {0}</value>
+    <value>Falha na solicitação: {0}</value>
     <comment>{0} will be replaced by URL of the request</comment>
   </data>
   <data name="ErrorGlobalConfigNotLoaded" xml:space="preserve">
@@ -158,9 +158,6 @@ StackTrace:
   <data name="ErrorIsInvalid" xml:space="preserve">
     <value>{0} é inválido!</value>
     <comment>{0} will be replaced by object's name</comment>
-  </data>
-  <data name="ErrorMobileAuthenticatorInvalidDeviceID" xml:space="preserve">
-    <value>Recusando executar esta função devido ao DeviceID inválido no ASF 2FA!</value>
   </data>
   <data name="ErrorNoBotsDefined" xml:space="preserve">
     <value>Nenhum bot definido. Você se esqueceu de configurar seu ASF?</value>
@@ -187,7 +184,7 @@ StackTrace:
     <value>Não foi possível prosseguir com a atualização pois esta versão não inclui nenhum arquivo!</value>
   </data>
   <data name="ErrorUserInputRunningInHeadlessMode" xml:space="preserve">
-    <value>O pedido de entrada do usuário foi recebido, mas o processo está sendo executado no modo não-interativo!</value>
+    <value>Recebemos um pedido de entrada do usuário, mas o processo está sendo executado no modo não-interativo!</value>
   </data>
   <data name="Exiting" xml:space="preserve">
     <value>Saindo...</value>
@@ -248,10 +245,6 @@ StackTrace:
     <value>Versão local: {0} | Versão remota: {1}</value>
     <comment>{0} will be replaced by current version, {1} will be replaced by remote version</comment>
   </data>
-  <data name="UserInputDeviceID" xml:space="preserve">
-    <value>Por favor, insira o ID do seu dispositivo de autenticador móvel (incluindo "android:"): </value>
-    <comment>Please note that this translation should end with space</comment>
-  </data>
   <data name="UserInputSteam2FA" xml:space="preserve">
     <value>Por favor, insira o código gerado pelo autenticador móvel do Steam: </value>
     <comment>Please note that this translation should end with space</comment>
@@ -271,10 +264,6 @@ StackTrace:
   <data name="UserInputSteamPassword" xml:space="preserve">
     <value>Por favor, insira a sua senha do Steam: </value>
     <comment>Please note that this translation should end with space</comment>
-  </data>
-  <data name="UserInputUnknown" xml:space="preserve">
-    <value>Por favor, insira o valor não documentado de {0}: </value>
-    <comment>{0} will be replaced by property name. Please note that this translation should end with space</comment>
   </data>
   <data name="WarningUnknownValuePleaseReport" xml:space="preserve">
     <value>O valor recebido para {0} é desconhecido, por favor informe: {1}</value>
@@ -407,9 +396,6 @@ StackTrace:
   <data name="BotAuthenticatorImportFinished" xml:space="preserve">
     <value>Verificação do autenticador móvel concluída com sucesso!</value>
   </data>
-  <data name="BotAuthenticatorInvalidDeviceID" xml:space="preserve">
-    <value>O DeviceID está incorreto ou não existe!</value>
-  </data>
   <data name="BotAuthenticatorToken" xml:space="preserve">
     <value>Código de autenticação: {0}</value>
     <comment>{0} will be replaced by generated 2FA token (string)</comment>
@@ -440,10 +426,10 @@ StackTrace:
     <comment>{0} will be replaced by password encryption method (string), {1} will be replaced by encrypted password using that method (string)</comment>
   </data>
   <data name="BotInstanceNotStartingBecauseDisabled" xml:space="preserve">
-    <value>Este bot não será iniciado, pois está desativado no arquivo de configurações!</value>
+    <value>Este bot não será iniciado pois está desativado no arquivo de configurações!</value>
   </data>
   <data name="BotInvalidAuthenticatorDuringLogin" xml:space="preserve">
-    <value>Erro TwoFactorCodeMismatch recebido {0} vezes seguidas. Suas credencias 2FA não são válidas ou seu relógio está fora de sincronia. Abortando!</value>
+    <value>Recebemos o código de erro TwoFactorCodeMismatch {0} vezes seguidas. As suas credencias da autenticação em duas etapas são inválidas ou o relógio do sistema não está sincronizado. Abortando!</value>
     <comment>{0} will be replaced by maximum allowed number of failed 2FA attempts</comment>
   </data>
   <data name="BotLoggedOff" xml:space="preserve">
@@ -473,7 +459,7 @@ StackTrace:
     <value>Você não pode enviar uma proposta de troca a si mesmo!</value>
   </data>
   <data name="BotNoASFAuthenticator" xml:space="preserve">
-    <value>Este bot não possui o ASF 2FA habilitado! Você esqueceu de importar seu autenticador para o 2FA ASF?</value>
+    <value>Este bot não possui o ASF 2FA habilitado! Você se esqueceu de importar o autenticador como ASF 2FA?</value>
   </data>
   <data name="BotNotConnected" xml:space="preserve">
     <value>Esse bot não está conectado!</value>
@@ -615,10 +601,7 @@ StackTrace:
   <data name="WarningPreReleaseVersion" xml:space="preserve">
     <value>Você está usando uma versão que é mais nova que a última lançada para o seu canal de atualizações. Por favor, tenha em mente que versões de pré-lançamento são dedicadas a usuários que sabem como relatar bugs, lidar com problemas e dar feedback - nenhum apoio técnico será fornecido.</value>
   </data>
-  <data name="BotStats" xml:space="preserve">
-    <value>Uso de memória atual: {0} MB.</value>
-    <comment>{0} will be replaced by number (in megabytes) of memory being used</comment>
-  </data>
+  
   <data name="ClearingDiscoveryQueue" xml:space="preserve">
     <value>Limpando a lista de descobrimento #{0}...</value>
     <comment>{0} will be replaced by queue number</comment>
@@ -650,14 +633,14 @@ StackTrace:
     <value>O bot de destino não está conectado!</value>
   </data>
   <data name="BotWalletBalance" xml:space="preserve">
-    <value>Saldo na carteira: {0} {1}</value>
+    <value>Saldo da Carteira: {0} {1}</value>
     <comment>{0} will be replaced by wallet balance value, {1} will be replaced by currency name</comment>
   </data>
   <data name="BotHasNoWallet" xml:space="preserve">
-    <value>O bot está com a carteira vazia.</value>
+    <value>O bot não tem saldo na Carteira.</value>
   </data>
   <data name="BotLevel" xml:space="preserve">
-    <value>O nível do bot é {0}.</value>
+    <value>Nível Steam do bot: {0}.</value>
     <comment>{0} will be replaced by bot's level</comment>
   </data>
   <data name="ActivelyMatchingItems" xml:space="preserve">
@@ -672,15 +655,69 @@ StackTrace:
     <value>Cancelado!</value>
   </data>
   <data name="ActivelyMatchingItemsRound" xml:space="preserve">
-    <value>Correspondido um total de {0} conjuntos nessa rodada.</value>
+    <value>{0} conjuntos foram associados no total nessa rodada.</value>
     <comment>{0} will be replaced by number of sets traded</comment>
   </data>
   <data name="WarningExcessiveBotsCount" xml:space="preserve">
-    <value>Se você estiver rodando mais contas bot que nosso limite máximo recomendado ({0}). Fique ciente de que não há suporte para isso e isso poderá causar vários problemas com o Steam, incluindo suspensões de contas. Veja as Perguntas Frequentes para mais detalhes.</value>
+    <value>Você está rodando mais contas pessoais de bots do que nosso limite máximo recomendado ({0}). Esteja ciente de que essa configuração não é suportada e pode causar vários problemas relacionados ao Steam, incluindo suspensões de contas. Acesse as perguntas frequentes para mais detalhes.</value>
     <comment>{0} will be replaced by our maximum recommended bots count (number)</comment>
   </data>
-  
-  
-  
-  
+  <data name="PluginLoaded" xml:space="preserve">
+    <value>"{0}" foi carregado com sucesso!</value>
+    <comment>{0} will be replaced by the name of the custom ASF plugin</comment>
+  </data>
+  <data name="PluginLoading" xml:space="preserve">
+    <value>Carregando {0} V{1}...</value>
+    <comment>{0} will be replaced by the name of the custom ASF plugin, {1} will be replaced by its version</comment>
+  </data>
+  <data name="NothingFound" xml:space="preserve">
+    <value>Nada encontrado!</value>
+  </data>
+  <data name="PluginsWarning" xml:space="preserve">
+    <value>Você carregou um ou mais plugins personalizados no ASF. Como não podemos oferecer suporte para configurações modificadas, por favor contate os desenvolvedores do plugin que você decidiu usar em caso de problemas.</value>
+  </data>
+  <data name="PleaseWait" xml:space="preserve">
+    <value>Por favor, aguarde...</value>
+  </data>
+  <data name="EnterCommand" xml:space="preserve">
+    <value>Digite o comando: </value>
+  </data>
+  <data name="Executing" xml:space="preserve">
+    <value>Executando...</value>
+  </data>
+  <data name="InteractiveConsoleEnabled" xml:space="preserve">
+    <value>O console interativo agora está ativo. Digite "c" para entrar no modo de comando.</value>
+  </data>
+  <data name="InteractiveConsoleNotAvailable" xml:space="preserve">
+    <value>O console interativo está indisponível porque a propriedade de configuração "{0}" está ausente.</value>
+    <comment>{0} will be replaced by the name of the missing config property (string)</comment>
+  </data>
+  <data name="Response" xml:space="preserve">
+    <value>Resposta: {0}</value>
+    <comment>{0} will be replaced by the generated response (string)</comment>
+  </data>
+  <data name="BotGamesToRedeemInBackgroundCount" xml:space="preserve">
+    <value>Há {0} jogo(s) restante(s) na fila de ativação em segundo plano do bot.</value>
+    <comment>{0} will be replaced by remaining number of games in BGR's queue</comment>
+  </data>
+  <data name="ErrorSingleInstanceRequired" xml:space="preserve">
+    <value>O processo ASF já está em execução para esta pasta de trabalho, abortando!</value>
+  </data>
+  <data name="BotHandledConfirmations" xml:space="preserve">
+    <value>{0} confirmações tratadas com sucesso!</value>
+    <comment>{0} will be replaced by number of confirmations</comment>
+  </data>
+  <data name="BotExtraIdlingCooldown" xml:space="preserve">
+    <value>Esperando até {0} para garantir que estamos livres para começar a coletar...</value>
+    <comment>{0} will be replaced by translated TimeSpan string (such as "1 minute")</comment>
+  </data>
+  <data name="UpdateCleanup" xml:space="preserve">
+    <value>Limpando arquivos antigos após a atualização...</value>
+  </data>
+  <data name="BotGeneratingSteamParentalCode" xml:space="preserve">
+    <value>Gerando o código do Modo Família, isso pode levar um tempo. Considere colocá-lo no arquivo de configuração...</value>
+  </data>
+  <data name="IPCConfigChanged" xml:space="preserve">
+    <value>A configuração IPC foi alterada!</value>
+  </data>
 </root>
